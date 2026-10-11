@@ -14,6 +14,30 @@ BACKLOG_DIR="scripts/github/backlog"
 
 gh auth status >/dev/null 2>&1 || { echo "Run 'gh auth login' first."; exit 1; }
 
+# Wrapper: when GitHub answers "rate limit exceeded" (secondary limit), wait and retry
+# instead of stopping the script.
+gh() {
+  local out err i
+  for i in 1 2 3 4 5 6; do
+    err=$(mktemp)
+    if out=$(command gh "$@" 2>"$err"); then
+      rm -f "$err"
+      [ -n "$out" ] && printf '%s\n' "$out"
+      return 0
+    fi
+    if grep -qi "rate limit" "$err"; then
+      rm -f "$err"
+      echo "  GitHub rate limit, waiting $((i * 60)) s (attempt $i/6)..." >&2
+      sleep $((i * 60))
+    else
+      cat "$err" >&2; rm -f "$err"
+      return 1
+    fi
+  done
+  echo "  Still rate limited, run the script again later." >&2
+  return 1
+}
+
 # ---------------------------------------------------------------- 1. Labels
 echo "== Labels"
 label() { gh label create "$1" --repo "$FULL" --color "$2" --description "$3" --force >/dev/null; }
@@ -58,9 +82,11 @@ echo "Project #$PNUM ($PID)"
 field_id() { gh project field-list "$PNUM" --owner "$OWNER" --format json --limit 50 \
              --jq ".fields[] | select(.name==\"$1\") | .id"; }
 
-# Status = board columns (overwrites the default Todo / In Progress / Done)
+# Status = board columns (overwrites the default Todo / In Progress / Done, only once)
 STATUS_ID=$(field_id "Status")
-gh api graphql -f f="$STATUS_ID" -f query='
+HAS_BACKLOG=$(gh project field-list "$PNUM" --owner "$OWNER" --format json --limit 50 \
+  --jq '.fields[] | select(.name=="Status") | .options[] | select(.name=="Product Backlog") | .id')
+[ -n "$HAS_BACKLOG" ] || gh api graphql -f f="$STATUS_ID" -f query='
 mutation($f: ID!) {
   updateProjectV2Field(input: {fieldId: $f, singleSelectOptions: [
     {name: "Product Backlog", color: GRAY,   description: "Not planned for the current sprint"},
@@ -92,27 +118,32 @@ mutation($p: ID!) {
       {title: "Sprint 4", startDate: "2026-11-20", duration: 14}
     ]}}) { projectV2Field { ... on ProjectV2IterationField { id } } }
 }' >/dev/null
-{"query":"mutation(\$p:ID!){createProjectV2Field(input:{projectId:\$p,dataType:ITERATION,name:\"Sprint\",
- iterationConfiguration:{startDate:\"2026-10-08\",duration:14,iterations:[
-  {title:\"Sprint 1\",startDate:\"2026-10-08\",duration:15},
-  {title:\"Sprint 2\",startDate:\"2026-10-23\",duration:14},
-  {title:\"Sprint 3\",startDate:\"2026-11-06\",duration:14},
-  {title:\"Sprint 4\",startDate:\"2026-11-20\",duration:14}]}}){projectV2Field{... on ProjectV2IterationField{id}}}}",
- "variables":{"p":"$PID"}}
-JSON
 fi
 
-# IDs needed to set field values
-PRIORITY_ID=$(field_id Priority); POINTS_ID=$(field_id "Story Points")
-EPIC_ID=$(field_id Epic); SPRINT_ID=$(field_id Sprint); STATUS_ID=$(field_id Status)
+# IDs needed to set field values — fetched ONCE (avoids the GraphQL rate limit)
+declare -A FIELD OPT
+while IFS=$'\t' read -r kind fname oname oid; do
+  if [ "$kind" = "F" ]; then FIELD["$fname"]="$oid"; else OPT["$fname|$oname"]="$oid"; fi
+done < <(gh api graphql -f p="$PID" -f query='
+query($p: ID!) { node(id: $p) { ... on ProjectV2 { fields(first: 50) { nodes {
+  ... on ProjectV2Field { id name }
+  ... on ProjectV2SingleSelectField { id name options { id name } }
+  ... on ProjectV2IterationField { id name configuration { iterations { id title } } }
+} } } } }' --jq '.data.node.fields.nodes[] | select(.name != null) |
+  ("F\t\(.name)\t-\t\(.id)"),
+  (.options[]? as $o | "O\t\(.name)\t\($o.name)\t\($o.id)"),
+  (.configuration.iterations[]? as $i | "O\t\(.name)\t\($i.title)\t\($i.id)")' | tr -d '\r')
 
-option_id() { # field_name option_name
-  gh project field-list "$PNUM" --owner "$OWNER" --format json --limit 50 \
-    --jq ".fields[] | select(.name==\"$1\") | .options[] | select(.name==\"$2\") | .id"
-}
-iteration_id() { # "Sprint N"
-  gh api graphql -f query="query{node(id:\"$PID\"){... on ProjectV2{field(name:\"Sprint\"){... on ProjectV2IterationField{configuration{iterations{id title}}}}}}}" \
-    --jq ".data.node.field.configuration.iterations[] | select(.title==\"$1\") | .id"
+# Existing issues, fetched once with the REST API (title -> url)
+declare -A ISSUE
+while IFS=$'\t' read -r t u; do ISSUE["$t"]="$u"; done < <(
+  gh api "repos/$FULL/issues?state=all&per_page=100" \
+    --jq '.[] | select(.pull_request == null) | "\(.title)\t\(.html_url)"' | tr -d '\r')
+
+set_select() { # item field option
+  local f="${FIELD[$2]:-}" o="${OPT[$2|$3]:-}"
+  if [ -z "$f" ] || [ -z "$o" ]; then echo "  WARNING: no option '$3' in field '$2'" >&2; return 0; fi
+  gh project item-edit --id "$1" --project-id "$PID" --field-id "$f" --single-select-option-id "$o" >/dev/null
 }
 
 # ---------------------------------------------------------------- 4. Issues
@@ -121,8 +152,7 @@ while IFS='|' read -r -u 3 key type title epic priority points sprint assignees 
   [ -z "$key" ] && continue
   milestone=""; [ "$sprint" != "-" ] && milestone="Validation $sprint"
 
-  url=$(gh issue list --repo "$FULL" --state all --limit 200 --json title,url \
-        --jq ".[] | select(.title==\"$title\") | .url")
+  url="${ISSUE[$title]:-}"
   if [ -z "$url" ]; then
     args=(--repo "$FULL" --title "$title" --body-file "$BACKLOG_DIR/$key.md"
           --label "$type" --label "epic: $epic" --label "priority: $priority")
@@ -138,21 +168,20 @@ while IFS='|' read -r -u 3 key type title epic priority points sprint assignees 
   fi
 
   item=$(gh project item-add "$PNUM" --owner "$OWNER" --url "$url" --format json --jq .id)
-  gh project item-edit --id "$item" --project-id "$PID" --field-id "$STATUS_ID" \
-    --single-select-option-id "$(option_id Status "$status")" >/dev/null
-  gh project item-edit --id "$item" --project-id "$PID" --field-id "$PRIORITY_ID" \
-    --single-select-option-id "$(option_id Priority "$priority")" >/dev/null
-  gh project item-edit --id "$item" --project-id "$PID" --field-id "$EPIC_ID" \
-    --single-select-option-id "$(option_id Epic "$epic")" >/dev/null
-  gh project item-edit --id "$item" --project-id "$PID" --field-id "$POINTS_ID" --number "$points" >/dev/null
+  set_select "$item" Status   "$status"
+  set_select "$item" Priority "$priority"
+  set_select "$item" Epic     "$epic"
+  gh project item-edit --id "$item" --project-id "$PID" --field-id "${FIELD[Story Points]:-}" \
+    --number "$points" >/dev/null
   if [ "$sprint" != "-" ]; then
-    gh project item-edit --id "$item" --project-id "$PID" --field-id "$SPRINT_ID" \
-      --iteration-id "$(iteration_id "Sprint $sprint")" >/dev/null
+    gh project item-edit --id "$item" --project-id "$PID" --field-id "${FIELD[Sprint]:-}" \
+      --iteration-id "${OPT[Sprint|Sprint $sprint]:-}" >/dev/null
   fi
 
   if [ "$priority" = "Won't" ]; then
     gh issue close "$url" --reason "not planned" >/dev/null 2>&1 || true
   fi
+  sleep 1   # stay below GitHub's secondary rate limit
 done 3< <(grep -v '^#' "$BACKLOG_DIR/backlog.tsv" | tr -d '\r')
 
 echo "Done. Open the project: https://github.com/users/$OWNER/projects/$PNUM"

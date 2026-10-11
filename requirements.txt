@@ -1,0 +1,9 @@
+# Runtime dependencies (Docker image). Pinned for reproducibility.
+Django==6.1.2
+djangorestframework==3.18.3
+psycopg[binary]==3.3.6
+pandas==3.0.6
+numpy==2.5.4
+requests==2.34.2
+scikit-learn==1.9.1
+joblib==1.6.0
