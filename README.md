@@ -45,22 +45,57 @@ Python 3.13 · Django 6.1 + Django REST Framework · PostgreSQL (operational sch
 ## Repository structure
 
 ```
+docker-compose.yml     services: db (PostgreSQL), web (Django), etl (pipeline, same image)
+Dockerfile             Python 3.13 image used by web and etl
+requirements.txt       pinned runtime dependencies (requirements-dev.txt: tests + Jupyter)
+.env.example           environment variables to copy into .env (never committed)
+backend/               Django project
+  config/              settings, URLs
+  accounts/            custom User, roles (US01)
+  cti/                 vulnerabilities, CVSS, KEV, CWE, ATT&CK, threat groups, IOCs
+  watchlist/           products, aliases, watchlist items
+  alerts/              alerts, status history, remediation plans
+  pipeline/            pipeline runs, ingestion tasks, run_pipeline command
+    connectors/        base connector interface + one connector per source
+  ml/                  model versions and predictions
+  templates/           shared templates (Bootstrap 5)
+warehouse/
+  init/                database initialization (dw schema, Power BI read-only user)
+  sql/                 constellation DDL + SQL refresh scripts (ELT) + OLAP queries
+ml/notebooks/          exploration and model training (Jupyter)
+ml/models/             trained model files (git-ignored)
+powerbi/               .pbix reports + connection and KPI documentation
 docs/                  specification, UML diagrams, data dictionary
-scripts/github/        one-off scripts that create the GitHub repository settings and backlog
+data/staging/          raw source snapshots (git-ignored)
+scripts/github/        one-off scripts that created the GitHub settings and backlog
 ```
 
-The application structure (`backend/`, `warehouse/`, `ml/`, `powerbi/`, `data/`) is added in Sprint 1 (see the Sprint 1 setup issues).
+## Run with Docker
 
-## Getting started
-
-Prerequisites: Git, Docker Desktop (WSL2 backend on Windows), Python 3.13, GitHub CLI.
+Prerequisites: Git, Docker Desktop (WSL2 backend on Windows) running.
 
 ```bash
 git clone https://github.com/Mayma9/threatlens.git
 cd threatlens
+cp .env.example .env          # then replace every "change-me" in .env
+docker compose up -d --build  # starts db and web
+docker compose ps             # db must be "healthy", web "running"
+docker compose exec web python manage.py createsuperuser
 ```
 
-Docker instructions will be added with the Docker Compose setup issue.
+Open http://localhost:8000/admin/ and log in with the superuser.
+
+| Task | Command |
+|---|---|
+| Logs of the web service | `docker compose logs -f web` |
+| Run the tests | `docker compose exec web python manage.py test` |
+| Django shell | `docker compose exec web python manage.py shell` |
+| PostgreSQL shell | `docker compose exec db psql -U threatlens -d threatlens` |
+| Run the ETL pipeline (from US02) | `docker compose run --rm etl` |
+| Stop | `docker compose down` |
+| Reset the database (deletes all data) | `docker compose down -v` |
+
+After a change to `requirements.txt` or the `Dockerfile`, rebuild with `docker compose up -d --build`. Python code changes are reloaded automatically.
 
 ## Contributing
 

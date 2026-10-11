@@ -1,0 +1,52 @@
+name: threatlens
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POWERBI_READER_PASSWORD: ${POWERBI_READER_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Scripts run once, when the database volume is created (dw schema, Power BI user)
+      - ./warehouse/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"   # Power BI Desktop connects to localhost:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app        # live code reload during development
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  etl:
+    build: .
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    command: python manage.py run_pipeline   # management command added in US02
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["etl"]   # not started by "docker compose up"; run with "docker compose run --rm etl"
+
+volumes:
+  pgdata:
