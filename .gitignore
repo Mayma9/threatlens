@@ -1,0 +1,63 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# --- Tests / coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# --- Django ---
+*.log
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Data (raw snapshots and large files are never versioned) ---
+data/staging/*
+!data/staging/.gitkeep
+*.csv.gz
+*.json.gz
+*.zip
+*.parquet
+
+# --- ML artifacts (trained models are versioned through ml_models metadata, not Git) ---
+ml/models/*.joblib
+ml/models/*.pkl
+
+# --- Power BI (keep .pbix, ignore temporary and cache files) ---
+powerbi/**/*.pbix.bak
+powerbi/**/~$*
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- IDE / OS ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

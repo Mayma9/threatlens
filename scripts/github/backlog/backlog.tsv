@@ -1,0 +1,29 @@
+# key|type|title|epic|priority|points|sprint|assignees|status
+# type: user-story or task. sprint: 1-4, or "-" for none. assignees: comma-separated GitHub logins.
+# Milestone = "Validation <sprint>". Status = initial board column.
+T01|task|Set up GitHub repository and Scrum board|Project setup|Must|2|1|Mayma9|In Progress
+T02|task|Set up Docker Compose environment (db, web, etl)|Project setup|Must|3|1|Mayma9,imenHi|Sprint Backlog
+T03|task|Create PostgreSQL schemas (operational + dw) and read-only Power BI user|Project setup|Must|2|1|imenHi|Sprint Backlog
+T04|task|Create Django project skeleton with apps and Bootstrap 5 base template|Project setup|Must|3|1|Mayma9|Sprint Backlog
+T05|task|Validate tooling choices with the supervisor (Python ETL vs SSIS, Power BI licence)|Project setup|Must|1|1|imenHi|Sprint Backlog
+T06|task|Request the NVD API key and the abuse.ch Auth-Key|Project setup|Must|1|1|imenHi|Sprint Backlog
+T07|task|Build the M1 baseline notebook and make the go/no-go decision|Machine learning|Must|3|1|Mayma9|Sprint Backlog
+US01|user-story|As an administrator, I want to manage accounts and roles so that each user only accesses authorized functions|Authentication & Roles|Must|5|1|Mayma9|Sprint Backlog
+US02|user-story|As the system, I want to ingest CVE records and KEV entries every day so that the data stays up to date|ETL & Data quality|Must|8|1|Mayma9,imenHi|Sprint Backlog
+US03|user-story|As an analyst, I want to search vulnerabilities by CVE, vendor or product so that I can quickly assess an exposure|Search & CVE record|Must|3|2|Mayma9|Product Backlog
+US04|user-story|As an analyst, I want an enriched CVE record (CVSS, EPSS, KEV, CWE) so that I understand the risk|Search & CVE record|Must|5|2|Mayma9|Product Backlog
+US05|user-story|As the system, I want to integrate EPSS, NVD, CWE and ThreatFox data so that analyses cover vulnerabilities and threats|ETL & Data quality|Must|8|2|imenHi|Product Backlog
+US06|user-story|As an administrator, I want every run logged with quality checks so that failures are traceable|ETL & Data quality|Must|5|2|imenHi|Product Backlog
+US07|user-story|As an analyst, I want to maintain a watchlist of our products with their aliases and criticality so that alerts match our assets|Watchlist & Alerts|Must|5|2|Mayma9|Product Backlog
+US08|user-story|As an analyst, I want alerts created automatically when a vulnerability affects a watched product so that nothing is missed|Watchlist & Alerts|Must|5|2|Mayma9|Product Backlog
+T08|task|Create the constellation schema DDL and the SQL refresh scripts (ELT)|Data warehouse & OLAP|Must|5|2|imenHi|Product Backlog
+US09|user-story|As a CISO, I want a first Power BI report on vulnerability volume, severity and exposure so that I can follow trends|Decision dashboards|Must|5|2|imenHi|Product Backlog
+US10|user-story|As an analyst, I want a predicted severity for CVEs without any CVSS score so that I can still prioritize them|Machine learning|Must|5|3|Mayma9|Product Backlog
+US11|user-story|As an analyst, I want a prioritized alert list and to update alert statuses with a comment so that remediation is tracked|Prioritization & Remediation plan|Must|5|3|Mayma9|Product Backlog
+US12|user-story|As a CISO, I want KPI dashboards with drill-down and remediation delays so that I can steer remediation|Decision dashboards|Must|5|3|imenHi|Product Backlog
+US13|user-story|As an analyst, I want an exploitation probability compared with EPSS so that I can rank alerts by risk|Machine learning|Should|8|3|Mayma9|Product Backlog
+US14|user-story|As an analyst, I want to prepare a weekly remediation plan that the CISO approves so that the team fixes the right vulnerabilities first|Prioritization & Remediation plan|Should|5|3|Mayma9|Product Backlog
+US15|user-story|As an administrator, I want to activate a model version after reviewing its metrics so that predictions stay under control|Machine learning|Should|3|3|Mayma9|Product Backlog
+US16|user-story|As an administrator, I want a monitoring page for pipeline runs so that I can check failures quickly|ETL & Data quality|Could|3|4|imenHi|Product Backlog
+US17|user-story|As an analyst, I want to see APT groups with similar techniques so that I can anticipate attacker behavior|Threat exploration|Could|5|4|Mayma9,imenHi|Product Backlog
+US18|user-story|Campaign alerts on IOC spikes (M4) and natural-language questions (AI analyst)|Threat exploration|Won't|0|-||Product Backlog
