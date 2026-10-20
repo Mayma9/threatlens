@@ -17,3 +17,6 @@ Dockerfile text eol=lf
 *.pdf  binary
 *.pbix binary
 *.joblib binary
+
+# Windows batch files keep CRLF
+*.bat      text eol=crlf

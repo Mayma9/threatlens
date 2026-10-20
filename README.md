@@ -111,6 +111,30 @@ All three belong to the organization *Demo Bank*. The command can be run again s
 | Stop | `docker compose down` |
 | Reset the database (deletes all data) | `docker compose down -v` |
 
+## ETL pipeline
+
+```bash
+docker compose run --rm etl python manage.py run_pipeline --source cve   # CVE List V5 (first load: 20-40 min)
+docker compose run --rm etl python manage.py run_pipeline --source kev   # CISA KEV (needs the CVEs first)
+docker compose run --rm etl                                              # every active source, in order
+```
+
+| Option | Effect |
+|---|---|
+| `--source NAME` | run one source (repeatable): `cve`, `kev` |
+| `--file PATH` | load a local snapshot instead of downloading (one source only) |
+| `--full` | reload every record, not only those updated since the last load |
+| `--triggered-by USERNAME` | record the administrator who started the run |
+
+Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message. Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md).
+
+### Daily run (Windows Task Scheduler)
+
+1. Open *Task Scheduler* → *Create Basic Task* → name `ThreatLens pipeline`.
+2. Trigger: *Daily*, e.g. 07:00.
+3. Action: *Start a program* → `scripts\run_pipeline.bat` in your clone (full path).
+4. Docker Desktop must be running at that time. The output goes to `data\staging\pipeline.log`.
+
 After a change to `requirements.txt` or the `Dockerfile`, rebuild with `docker compose up -d --build`. Python code changes are reloaded automatically.
 
 ## Contributing
