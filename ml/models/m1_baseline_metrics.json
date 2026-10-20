@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-20",
+  "train_period": "2018-01-01 to 2025-07-01",
+  "test_period": "from 2025-07-01",
+  "train_size": 114569,
+  "test_size": 87756,
+  "best_model": "TF-IDF + logistic regression",
+  "macro_f1": 0.516,
+  "baseline_macro_f1": 0.147,
+  "decision": "NO-GO"
+}
