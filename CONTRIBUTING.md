@@ -60,6 +60,7 @@ docs(dw): document FACT_ALERT grain (#14)
 - Body: fill in the template, including `Closes #<issue>`.
 - Keep pull requests small (ideally under 400 changed lines, excluding generated files).
 - The reviewer checks the Definition of Done before approving.
+- The **author** of the pull request merges it, after the other member's approval.
 - Use **Squash and merge**. The branch is deleted automatically after the merge.
 
 ## Definition of Done

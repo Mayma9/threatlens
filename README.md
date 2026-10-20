@@ -22,10 +22,10 @@ The full scope is defined in the [requirements specification](docs/specification
 
 | Member | Scrum role | Lead areas |
 |---|---|---|
-| Imen Hichri ([@imenHi](https://github.com/imenHi)) | Product Owner | Connectors (KEV, EPSS, NVD, CWE, ThreatFox, ATT&CK, CTID), data quality, data warehouse, Power BI |
-| Oumaima Hafiane ([@Mayma9](https://github.com/Mayma9)) | Scrum Master | CVE List V5 connector, machine learning (M1–M3), Django console |
+| Imen Hichri ([@imenHi](https://github.com/imenHi)) | Product Owner | Connectors (KEV, EPSS, NVD, CWE, ThreatFox, ATT&CK, CTID), data quality, data warehouse |
+| Oumaima Hafiane ([@Mayma9](https://github.com/Mayma9)) | Scrum Master | CVE List V5 connector, Django console |
 
-Shared: environment setup, code reviews, tests, documentation, demonstration.
+Shared: machine learning (M1–M3), Power BI reports, environment setup, code reviews, tests, documentation, demonstration.
 
 ## Sprint calendar
 
@@ -83,7 +83,23 @@ docker compose ps             # db must be "healthy", web "running"
 docker compose exec web python manage.py createsuperuser
 ```
 
-Open http://localhost:8000/admin/ and log in with the superuser.
+Open http://localhost:8000/ and log in.
+
+### Demo accounts
+
+Set `DEMO_USER_PASSWORD` in `.env`, restart (`docker compose up -d`), then:
+
+```bash
+docker compose exec web python manage.py create_demo_users
+```
+
+| Account | Role | Access |
+|---|---|---|
+| `analyst1` | Security analyst | triage console |
+| `ciso1` | CISO | everything the analyst can do + remediation plan approval |
+| `admin1` | Administrator | Django admin (users, roles, sources, models), pipeline monitoring |
+
+All three belong to the organization *Demo Bank*. The command can be run again safely.
 
 | Task | Command |
 |---|---|
