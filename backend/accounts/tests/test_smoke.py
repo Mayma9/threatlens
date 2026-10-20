@@ -7,5 +7,7 @@ class SmokeTests(TestCase):
         self.assertEqual(get_user_model()._meta.label, "accounts.User")
 
     def test_admin_login_page_is_reachable(self):
-        response = self.client.get("/admin/login/")
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/admin/login/").status_code, 200)
+
+    def test_login_page_is_reachable_without_authentication(self):
+        self.assertEqual(self.client.get("/accounts/login/").status_code, 200)

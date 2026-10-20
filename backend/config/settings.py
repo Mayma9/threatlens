@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.LoginRequiredMiddleware",  # every page requires login (FR-03)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -88,6 +89,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # --- Authentication -----------------------------------------------------------
 # Custom user model from day one: roles (ANALYST / CISO / ADMIN) are added in US01.
 AUTH_USER_MODEL = "accounts.User"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -122,3 +126,4 @@ MAILERS = {
 STAGING_DIR = Path(os.environ.get("STAGING_DIR", REPO_DIR / "data" / "staging"))
 NVD_API_KEY = os.environ.get("NVD_API_KEY", "")
 ABUSECH_AUTH_KEY = os.environ.get("ABUSECH_AUTH_KEY", "")
+DEMO_USER_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "")
