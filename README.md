@@ -84,6 +84,17 @@ docker compose exec web python manage.py createsuperuser
 ```
 
 Open http://localhost:8000/ and log in.
+## Run the notebooks (ml/notebooks)
+
+Prerequisites: the Docker database is running with the CVE data loaded (`docker compose up -d`) and your `.env` exists. The notebooks read the PostgreSQL settings from `.env` (`POSTGRES_HOST=localhost`).
+
+```powershell
+py -3.13 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m jupyterlab
+```
+
+Open `ml/notebooks/m1_baseline.ipynb` and choose **Kernel → Restart Kernel and Run All Cells**. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
 
 ### Demo accounts
 
