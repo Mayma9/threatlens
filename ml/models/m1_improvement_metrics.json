@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-20",
+  "features": "text + products",
+  "C": 2.0,
+  "fit_period": "2018-01-01 to 2024-07-01",
+  "validation_period": "2024-07-01 to 2025-07-01",
+  "test_period": "from 2025-07-01",
+  "test_size": 87756,
+  "macro_f1": 0.521,
+  "baseline_macro_f1": 0.516,
+  "right_or_one_class_away": 0.935,
+  "decision": "NO-GO"
+}
