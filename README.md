@@ -137,6 +137,18 @@ Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, ex
 
 After a change to `requirements.txt` or the `Dockerfile`, rebuild with `docker compose up -d --build`. Python code changes are reloaded automatically.
 
+## Run the notebooks (ml/notebooks)
+
+Prerequisites: the Docker database is running with the CVE data loaded (`docker compose up -d`) and your `.env` exists. The notebooks read the PostgreSQL settings from `.env` (`POSTGRES_HOST=localhost`).
+
+```powershell
+py -3.13 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m jupyterlab
+```
+
+Open `ml/notebooks/m1_baseline.ipynb` and choose **Kernel → Restart Kernel and Run All Cells**. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a branch: branch naming, commit convention, pull requests and Definition of Done.
