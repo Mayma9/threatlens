@@ -52,13 +52,15 @@ requirements.txt       pinned runtime dependencies (requirements-dev.txt: tests 
 backend/               Django project
   config/              settings, URLs
   accounts/            custom User, roles (US01)
+    templates/         layout (accounts/base.html), home, login (registration/), 403 page,
+                       admin look (admin/base_site.html overrides Django's)
+    static/accounts/   ThreatLens theme: lens.css (shared), threatlens.css (console), admin.css
   cti/                 vulnerabilities, CVSS, KEV, CWE, ATT&CK, threat groups, IOCs
   watchlist/           products, aliases, watchlist items
   alerts/              alerts, status history, remediation plans
   pipeline/            pipeline runs, ingestion tasks, run_pipeline command
     connectors/        base connector interface + one connector per source
   ml/                  model versions and predictions
-  templates/           shared templates (Bootstrap 5)
 warehouse/
   init/                database initialization (dw schema, Power BI read-only user)
   sql/                 constellation DDL + SQL refresh scripts (ELT) + OLAP queries
@@ -69,6 +71,8 @@ docs/                  specification, UML diagrams, data dictionary
 data/staging/          raw source snapshots (git-ignored)
 scripts/github/        one-off scripts that created the GitHub settings and backlog
 ```
+
+Each Django app keeps its own templates in `<app>/templates/<app>/` and its static files in `<app>/static/<app>/` (`APP_DIRS = True`, no project-level template folder). Other apps extend the shared layout with `{% extends "accounts/base.html" %}`.
 
 ## Run with Docker
 

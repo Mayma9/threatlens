@@ -1,0 +1,36 @@
+{% extends "accounts/base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h1 class="tl-page-title">Welcome, {{ user.get_full_name|default:user.username }}</h1>
+<p class="tl-muted mb-0">
+  {{ user.get_role_display }}{% if user.organization %} at <strong>{{ user.organization }}</strong>{% endif %}
+</p>
+
+<div class="row g-3 mt-4">
+  {% if user.is_analyst %}
+  <div class="col-md-6 col-lg-4">
+    <section class="tl-panel tl-panel--analyst h-100 p-4">
+      <h2 class="h6"><i class="bi bi-search"></i> Triage</h2>
+      <p class="small tl-muted mb-0">Vulnerability search, enriched CVE record, watchlist and prioritized alerts.</p>
+    </section>
+  </div>
+  {% endif %}
+  {% if user.is_ciso %}
+  <div class="col-md-6 col-lg-4">
+    <section class="tl-panel tl-panel--ciso h-100 p-4">
+      <h2 class="h6"><i class="bi bi-bar-chart"></i> Decision</h2>
+      <p class="small tl-muted mb-0">Remediation plan approval. Decision dashboards open in Power BI Desktop.</p>
+    </section>
+  </div>
+  {% endif %}
+  {% if user.is_platform_admin %}
+  <div class="col-md-6 col-lg-4">
+    <section class="tl-panel tl-panel--admin h-100 p-4">
+      <h2 class="h6"><i class="bi bi-gear"></i> Administration</h2>
+      <p class="small tl-muted">Users and roles, data sources, model versions and pipeline monitoring.</p>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'admin:index' %}">Open administration</a>
+    </section>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+/* ThreatLens identity shared by the console and the Django admin:
+   colour tokens, the page background and the "lens" (radar) decoration.
+   Palette and fonts follow the project presentation. */
+
+:root {
+  --tl-abyss: #081423;     /* page background */
+  --tl-navy: #10243b;      /* panels */
+  --tl-cyan: #2dd4ef;      /* signal, primary actions, analyst */
+  --tl-lavender: #a78bfa;  /* CISO */
+  --tl-amber: #f5b544;     /* actively exploited (KEV) */
+  --tl-frost: #e8f0fa;     /* headings */
+  --tl-mist: #9fb3ca;      /* secondary text */
+  --tl-line: rgba(159, 179, 202, 0.18);
+  --tl-display: "Poppins", "IBM Plex Sans", system-ui, sans-serif;
+  --tl-text: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --tl-backdrop:
+    radial-gradient(1100px 600px at 85% -10%, rgba(45, 212, 239, 0.10), transparent 60%),
+    radial-gradient(900px 520px at -10% 110%, rgba(167, 139, 250, 0.10), transparent 60%),
+    radial-gradient(rgba(159, 179, 202, 0.10) 1px, transparent 1.6px);
+}
+
+/* ---------- Page background ---------- */
+.tl-body {
+  background-color: var(--tl-abyss);
+  background-image: var(--tl-backdrop);
+  background-size: auto, auto, 26px 26px;
+  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ---------- The lens ---------- */
+.tl-lens {
+  --lens-size: 560px;
+  --sweep: 8s;
+  position: relative;
+  width: var(--lens-size);
+  height: var(--lens-size);
+  flex: none;
+  pointer-events: none;
+}
+
+/* Live: next to the login form, animated */
+.tl-lens--live { --lens-size: min(560px, 44vw); }
+
+/* Ambient: still and faint, in the top-right corner of every other page */
+.tl-lens--ambient {
+  --lens-size: max(72vmin, 520px);
+  position: fixed;
+  top: calc(var(--lens-size) * -0.32);
+  right: calc(var(--lens-size) * -0.28);
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.tl-lens__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(159, 179, 202, 0.22);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.tl-lens__rings line { stroke: rgba(159, 179, 202, 0.10); }
+
+/* The sweep: a fading wedge whose leading edge points up, then turns clockwise */
+.tl-lens__sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0turn 0.8turn, rgba(45, 212, 239, 0.26) 1turn);
+  transform: rotate(0.3turn);
+}
+.tl-lens__sweep::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 50%;
+  background: linear-gradient(to top, rgba(45, 212, 239, 0.05), rgba(45, 212, 239, 0.8));
+}
+
+.tl-lens__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--tl-cyan);
+  box-shadow: 0 0 0 6px rgba(45, 212, 239, 0.12);
+}
+
+/* Signal points: placed by angle (--t of a turn) and distance (--r of the lens size) */
+.tl-blip {
+  color: var(--tl-cyan);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  box-shadow: 0 0 10px currentColor;
+  transform: rotate(calc(var(--t) * 1turn)) translateY(calc(var(--r) * var(--lens-size) * -1));
+}
+.tl-blip--exploited { color: var(--tl-amber); width: 10px; height: 10px; margin: -5px 0 0 -5px; opacity: 0.6; }
+
+/* Each point flares when the leading edge reaches its angle, then fades */
+.tl-lens--live .tl-lens__sweep { animation: tl-sweep var(--sweep) linear infinite; }
+.tl-lens--live .tl-blip {
+  animation: tl-ping var(--sweep) linear infinite;
+  animation-delay: calc((var(--t) - 1) * var(--sweep));
+}
+
+@keyframes tl-sweep {
+  from { transform: rotate(0turn); }
+  to { transform: rotate(1turn); }
+}
+@keyframes tl-ping {
+  0% { opacity: 1; box-shadow: 0 0 0 0 currentColor, 0 0 16px currentColor; }
+  12% { opacity: 0.9; box-shadow: 0 0 0 12px transparent, 0 0 12px currentColor; }
+  100% { opacity: 0.15; box-shadow: 0 0 0 12px transparent, 0 0 4px currentColor; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-lens--live .tl-lens__sweep,
+  .tl-lens--live .tl-blip { animation: none; }
+}
