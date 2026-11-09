@@ -26,6 +26,7 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 # --- Applications -------------------------------------------------------------
 INSTALLED_APPS = [
+    "accounts",  # first, so that its admin/base_site.html overrides Django's admin template
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,8 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    # ThreatLens apps
-    "accounts",
+    # Other ThreatLens apps
     "cti",
     "watchlist",
     "alerts",
@@ -58,7 +58,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [],  # every template lives in its app: <app>/templates/<app>/...
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

@@ -1,0 +1,159 @@
+/* Django admin mapped to the ThreatLens tokens (lens.css).
+   Django's admin is built on CSS variables, so most of the theme is a new set of values. */
+
+:root,
+html[data-theme] {
+  --primary: #13304d;
+  --secondary: var(--tl-navy);
+  --accent: var(--tl-cyan);
+  --primary-fg: var(--tl-frost);
+
+  --body-fg: #c9d6e8;
+  --body-bg: var(--tl-abyss);
+  --body-quiet-color: var(--tl-mist);
+  --body-medium-color: #c9d6e8;
+  --body-loud-color: var(--tl-frost);
+
+  --header-color: var(--tl-mist);
+  --header-branding-color: var(--tl-frost);
+  --header-bg: transparent;
+  --header-link-color: var(--tl-frost);
+
+  --breadcrumbs-fg: var(--tl-mist);
+  --breadcrumbs-link-fg: var(--tl-cyan);
+  --breadcrumbs-bg: transparent;
+
+  --link-fg: var(--tl-cyan);
+  --link-hover-color: #7ee6f7;
+  --link-selected-fg: var(--tl-lavender);
+
+  --hairline-color: rgba(159, 179, 202, 0.14);
+  --border-color: rgba(159, 179, 202, 0.30);
+
+  --error-fg: #ff8a8a;
+
+  --message-debug-bg: #23364d;
+  --message-debug-icon: url(/static/admin/img/icon-debug-dark.svg);
+  --message-info-bg: #123a5c;
+  --message-info-icon: url(/static/admin/img/icon-info-dark.svg);
+  --message-success-bg: #0f4433;
+  --message-success-icon: url(/static/admin/img/icon-yes-dark.svg);
+  --message-warning-bg: #4d3a12;
+  --message-warning-icon: url(/static/admin/img/icon-alert-dark.svg);
+  --message-error-bg: #5a1d22;
+  --message-error-icon: url(/static/admin/img/icon-no-dark.svg);
+
+  --darkened-bg: rgba(8, 20, 35, 0.55);
+  --selected-bg: #16324f;
+  --selected-row: #0f3346;
+
+  --button-fg: var(--tl-abyss);
+  --button-bg: var(--tl-cyan);
+  --button-hover-bg: #7ee6f7;
+  --default-button-bg: var(--tl-cyan);
+  --default-button-hover-bg: #7ee6f7;
+  --close-button-bg: #2a3f57;
+  --close-button-hover-bg: #3b5573;
+  --delete-button-bg: #c24141;
+  --delete-button-hover-bg: #a83232;
+  --object-tools-fg: var(--tl-frost);
+
+  --font-family-primary: var(--tl-text);
+
+  color-scheme: dark;
+}
+
+/* Content sits above the lens */
+#container { position: relative; z-index: 1; background: transparent; }
+
+/* Header */
+#header {
+  background: rgba(8, 20, 35, 0.72);
+  border-bottom: 1px solid var(--tl-line);
+  backdrop-filter: blur(8px);
+}
+#site-name a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--tl-display);
+  font-weight: 600;
+}
+#site-name a:link, #site-name a:visited { color: var(--tl-frost); }
+.tl-admin-mark { width: 28px; height: 28px; fill: none; stroke: var(--tl-cyan); stroke-width: 1.4; }
+.tl-admin-mark .tl-admin-mark__core { fill: var(--tl-cyan); stroke: none; }
+#user-tools { letter-spacing: 0; text-transform: none; }
+.theme-toggle { display: none; } /* the admin is always dark */
+
+/* Breadcrumbs */
+div.breadcrumbs { border-bottom: 1px solid var(--tl-line); }
+
+/* Headings */
+#content h1, #content h2 { font-family: var(--tl-display); color: var(--tl-frost); }
+
+/* Panels: app lists, recent actions, filters, change lists */
+.module,
+#changelist-filter,
+#content-related {
+  background: rgba(16, 36, 59, 0.78);
+  border: 1px solid var(--tl-line);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+.module { overflow: hidden; }
+#content-related .module { background: transparent; border: 0; backdrop-filter: none; }
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  background: transparent;
+  color: var(--tl-cyan);
+  font-family: var(--tl-display);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 12px 14px 8px;
+}
+.module caption a { color: var(--tl-cyan); }
+
+/* Tables */
+thead th, tfoot td, .module table thead th { background: rgba(8, 20, 35, 0.55); color: var(--tl-mist); }
+td, th { border-bottom-color: var(--tl-line); }
+tr:nth-child(even) td, tr:nth-child(even) th { background: transparent; }
+#result_list tbody tr:hover td, #result_list tbody tr:hover th { background: rgba(45, 212, 239, 0.06); }
+
+/* Forms */
+input[type=text], input[type=password], input[type=email], input[type=url], input[type=number],
+input[type=tel], input[type=search], textarea, select, .vTextField {
+  background-color: rgba(8, 20, 35, 0.75);
+  border-color: var(--border-color);
+  color: var(--tl-frost);
+  border-radius: 6px;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--tl-cyan); }
+.button, input[type=submit], input[type=button], .submit-row input, a.button { border-radius: 8px; font-weight: 500; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--tl-cyan);
+  outline-offset: 2px;
+}
+
+/* Admin login page (Django's login.css repaints the page background, so it is set again here) */
+body.login.tl-body {
+  background-color: var(--tl-abyss);
+  background-image: var(--tl-backdrop);
+  background-size: auto, auto, 26px 26px;
+  background-attachment: fixed;
+}
+.login #container {
+  background: rgba(16, 36, 59, 0.85);
+  border: 1px solid var(--tl-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.login #header { border-radius: 0; }
+
+/* Side navigation (when enabled) */
+#nav-sidebar { background: rgba(8, 20, 35, 0.6); border-right-color: var(--tl-line); }
+#toggle-nav-sidebar { background: rgba(8, 20, 35, 0.6); border-color: var(--tl-line); }

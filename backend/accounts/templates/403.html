@@ -1,0 +1,9 @@
+{% extends "accounts/base.html" %}
+{% block title %}Access denied{% endblock %}
+{% block content %}
+<div class="tl-denied">
+  <h1 class="tl-page-title">Your role can't open this page.</h1>
+  <p class="tl-muted">Ask an administrator if you need this access.</p>
+  <a class="btn btn-primary" href="{% url 'home' %}">Back to home</a>
+</div>
+{% endblock %}

@@ -32,9 +32,9 @@ Shared: machine learning (M1–M3), Power BI reports, environment setup, code re
 | Sprint | Dates | Goal | Validation |
 |---|---|---|---|
 | Sprint 1 | 08 Oct – 22 Oct 2026 | Foundations and first data slice | Validation 1 — 22 Oct 2026 (design review) |
-| Sprint 2 | 23 Oct – 05 Nov 2026 | Complete integration and first alerts | Validation 2 — 05 Nov 2026 |
-| Sprint 3 | 06 Nov – 19 Nov 2026 | Machine learning and prioritization | Validation 3 — 19 Nov 2026 |
-| Sprint 4 | 20 Nov – 03 Dec 2026 | Finalization | Validation 4 — 03 Dec 2026 (final) |
+| Sprint 2 | 23 Oct – 12 Nov 2026 | Complete integration and first alerts | Validation 2 — 12 Nov 2026 |
+| Sprint 3 | 13 Nov – 26 Nov 2026 | Machine learning and prioritization | Validation 3 — 26 Nov 2026 |
+| Sprint 4 | 27 Nov – 10 Dec 2026 | Finalization | Validation 4 — 10 Dec 2026 (final) |
 
 The product and sprint backlogs live in the GitHub Project **ThreatLens**.
 
@@ -52,13 +52,16 @@ requirements.txt       pinned runtime dependencies (requirements-dev.txt: tests 
 backend/               Django project
   config/              settings, URLs
   accounts/            custom User, roles (US01)
+    templates/         layout (accounts/base.html), home, login (registration/), 403 page,
+                       admin look (admin/base_site.html overrides Django's)
+    static/accounts/   ThreatLens theme: lens.css (shared), threatlens.css (console), admin.css;
+                       js/alerts.js shows messages and errors with SweetAlert2
   cti/                 vulnerabilities, CVSS, KEV, CWE, ATT&CK, threat groups, IOCs
   watchlist/           products, aliases, watchlist items
   alerts/              alerts, status history, remediation plans
   pipeline/            pipeline runs, ingestion tasks, run_pipeline command
     connectors/        base connector interface + one connector per source
   ml/                  model versions and predictions
-  templates/           shared templates (Bootstrap 5)
 warehouse/
   init/                database initialization (dw schema, Power BI read-only user)
   sql/                 constellation DDL + SQL refresh scripts (ELT) + OLAP queries
@@ -69,6 +72,8 @@ docs/                  specification, UML diagrams, data dictionary
 data/staging/          raw source snapshots (git-ignored)
 scripts/github/        one-off scripts that created the GitHub settings and backlog
 ```
+
+Each Django app keeps its own templates in `<app>/templates/<app>/` and its static files in `<app>/static/<app>/` (`APP_DIRS = True`, no project-level template folder). Other apps extend the shared layout with `{% extends "accounts/base.html" %}`.
 
 ## Run with Docker
 

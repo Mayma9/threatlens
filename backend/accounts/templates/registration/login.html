@@ -1,0 +1,40 @@
+{% extends "accounts/base.html" %}
+{% block title %}Log in{% endblock %}
+{% block body_class %}tl-auth{% endblock %}
+{# Small screens keep the faint corner lens; large screens show the live lens next to the form #}
+{% block lens %}<div class="d-lg-none">{{ block.super }}</div>{% endblock %}
+{% block content %}
+<div class="row align-items-center g-5 tl-auth__row">
+  <div class="col-lg-5">
+    <h1 class="tl-auth__title">Know which vulnerabilities to fix first.</h1>
+    <p class="tl-auth__lead">Public threat intelligence, sorted by what matters to your organization.</p>
+
+    <div class="tl-panel p-4 mt-4">
+      <h2 class="h5 mb-3">Log in</h2>
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger py-2" role="alert" data-tl-alert data-level="error"
+           data-title="Login failed" data-button="Try again">Invalid username or password. Check both fields and try again.</div>
+      {% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="mb-3">
+          <label for="id_username" class="form-label">Username</label>
+          <input type="text" name="username" id="id_username" class="form-control"
+                 value="{{ form.username.value|default_if_none:'' }}" autocomplete="username" required autofocus>
+        </div>
+        <div class="mb-4">
+          <label for="id_password" class="form-label">Password</label>
+          <input type="password" name="password" id="id_password" class="form-control"
+                 autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Log in</button>
+      </form>
+    </div>
+    <p class="tl-muted small mt-3 mb-0">Accounts are created by your administrator.</p>
+  </div>
+  <div class="col-lg-7 d-none d-lg-flex justify-content-center">
+    {% include "accounts/_lens.html" with variant="live" %}
+  </div>
+</div>
+{% endblock %}

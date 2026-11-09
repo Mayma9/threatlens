@@ -3,6 +3,11 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import Organization, User
 
+# Titles shown by the admin: page header, browser tab, index page
+admin.site.site_header = "ThreatLens administration"
+admin.site.site_title = "ThreatLens"
+admin.site.index_title = "Site administration"
+
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):

@@ -1,17 +1,26 @@
 {% load static %}<!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}ThreatLens{% endblock %} · ThreatLens</title>
+  <title>{% block title %}ThreatLens{% endblock %} | ThreatLens</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  {% include "accounts/_theme_head.html" %}
+  <link href="{% static 'accounts/css/threatlens.css' %}" rel="stylesheet">
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-body-tertiary d-flex flex-column min-vh-100">
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<body class="tl-body d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
+  {% block lens %}{% include "accounts/_lens.html" with variant="ambient" %}{% endblock %}
+
+  <nav class="navbar navbar-expand-lg tl-nav">
     <div class="container-fluid">
-      <a class="navbar-brand fw-semibold" href="{% url 'home' %}"><i class="bi bi-shield-lock"></i> ThreatLens</a>
+      <a class="navbar-brand tl-brand" href="{% url 'home' %}">
+        <svg class="tl-brand__mark" viewBox="-12 -12 24 24" aria-hidden="true">
+          <circle r="10.5"/><circle r="6"/><circle r="2" class="tl-brand__core"/>
+        </svg>
+        ThreatLens
+      </a>
       {% if user.is_authenticated %}
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
               aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,9 +39,9 @@
           <li class="nav-item"><span class="nav-link disabled" title="Sprint 4">Pipeline monitoring</span></li>
           {% endif %}
         </ul>
-        <div class="d-flex align-items-center gap-3 text-light">
-          <span><i class="bi bi-person-circle"></i> {{ user.username }}
-            <span class="badge text-bg-secondary ms-1">{{ user.get_role_display }}</span></span>
+        <div class="d-flex align-items-center gap-3">
+          <span class="tl-user"><i class="bi bi-person-circle"></i> {{ user.username }}
+            <span class="tl-role tl-role--{{ user.role|lower }}">{{ user.get_role_display }}</span></span>
           <form method="post" action="{% url 'logout' %}" class="m-0">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
@@ -43,20 +52,17 @@
     </div>
   </nav>
 
-  <main class="container py-4 flex-grow-1">
-    {% for message in messages %}
-    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    {% endfor %}
+  <main class="container py-4 py-lg-5 flex-grow-1 tl-main">
+    {% include "accounts/_alerts.html" %}
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="py-3 text-center text-body-secondary small">
-    ThreatLens · Cybersecurity Threat Intelligence Data Warehouse · TEK-UP ING-4 SDIA
+  <footer class="py-3 text-center small tl-footer">
+    ThreatLens, a cybersecurity threat intelligence data warehouse. TEK-UP ING-4 SDIA project.
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.all.min.js"></script>
+  <script src="{% static 'accounts/js/alerts.js' %}"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>
