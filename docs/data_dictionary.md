@@ -54,6 +54,29 @@ Unique: (`vulnerability`, `provider`, `version`). CISA ADP SSVC exploitation fie
 | `required_action` | text | `requiredAction` | Action required by CISA |
 | `ransomware_use` | boolean | `knownRansomwareCampaignUse` | `true` when the value is `Known` |
 
+## Watchlist (`watchlist` app)
+
+### `watchlist_watchlistitem` — a product watched by an organization (US07, FR-07)
+
+| Column | Type | Description |
+|---|---|---|
+| `organization_id` | FK → `accounts_organization` | Organization that runs the product |
+| `product_id` | FK → `cti_product` | Normalized product (created if no CVE names it yet) |
+| `criticality` | smallint, check 1–4 | Business criticality: 1 low, 2 medium, 3 high, 4 critical |
+| `added_at` | timestamptz | Date the product was added |
+
+Unique together: (`organization_id`, `product_id`).
+
+### `watchlist_productalias` — other spellings of a product published by the CNAs (FR-08, risk R10)
+
+| Column | Type | Description |
+|---|---|---|
+| `product_id` | FK → `cti_product` | Product the raw name designates |
+| `raw_vendor`, `raw_product` | varchar(200) | Raw names as found in CVE records, stored with the same rule as `cti_product` (lowercase, single spaces) |
+
+Unique together: (`raw_vendor`, `raw_product`): a raw name designates one product only.
+**Matching:** a watched product matches the CVE-record products whose (vendor, name) is its own name or one of its aliases (`watchlist/matching.py`). The *Unmatched names* page lists the names of CVE records that look like a watched product but match none, so the analyst can turn them into aliases.
+
 ## ETL monitoring (`pipeline` app)
 
 ### `pipeline_source`

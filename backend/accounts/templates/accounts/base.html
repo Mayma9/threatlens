@@ -30,7 +30,10 @@
         <ul class="navbar-nav me-auto">
           {% if user.is_analyst %}
           <li class="nav-item"><span class="nav-link disabled" title="Sprint 2">Vulnerabilities</span></li>
-          <li class="nav-item"><span class="nav-link disabled" title="Sprint 2">Watchlist</span></li>
+          {% with section=request.resolver_match.app_name %}
+          <li class="nav-item"><a class="nav-link{% if section == 'watchlist' %} active{% endif %}"
+              {% if section == 'watchlist' %}aria-current="page"{% endif %} href="{% url 'watchlist:list' %}">Watchlist</a></li>
+          {% endwith %}
           <li class="nav-item"><span class="nav-link disabled" title="Sprint 3">Alerts</span></li>
           <li class="nav-item"><span class="nav-link disabled" title="Sprint 3">Remediation plan</span></li>
           {% endif %}
