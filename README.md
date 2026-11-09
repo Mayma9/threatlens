@@ -54,7 +54,8 @@ backend/               Django project
   accounts/            custom User, roles (US01)
     templates/         layout (accounts/base.html), home, login (registration/), 403 page,
                        admin look (admin/base_site.html overrides Django's)
-    static/accounts/   ThreatLens theme: lens.css (shared), threatlens.css (console), admin.css
+    static/accounts/   ThreatLens theme: lens.css (shared), threatlens.css (console), admin.css;
+                       js/alerts.js shows messages and errors with SweetAlert2
   cti/                 vulnerabilities, CVSS, KEV, CWE, ATT&CK, threat groups, IOCs
   watchlist/           products, aliases, watchlist items
   alerts/              alerts, status history, remediation plans

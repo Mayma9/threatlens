@@ -1,0 +1,13 @@
+{% comment %}
+Django messages (messages.success / info / warning / error).
+They are rendered as plain Bootstrap alerts; accounts/js/alerts.js turns every element marked
+data-tl-alert into a SweetAlert2 pop-up (errors, warnings) or toast (success, info).
+If the script cannot load (offline), the plain alerts stay visible.
+{% endcomment %}
+{% for message in messages %}
+<div class="alert alert-{% if message.level_tag == 'error' %}danger{% else %}{{ message.level_tag }}{% endif %} alert-dismissible fade show"
+     role="alert" data-tl-alert data-level="{{ message.level_tag }}">
+  {{ message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
