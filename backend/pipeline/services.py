@@ -9,6 +9,7 @@ from django.utils import timezone
 from alerts.models import AlertGeneration
 from alerts.services import cve_watermark, generate_alerts
 from cti.models import Vulnerability
+from cti.services import refresh_effective_severity
 
 from .connectors import REGISTRY
 from .models import IngestionTask, PipelineRun, RunStatus, Source
@@ -55,6 +56,9 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
     statuses = set(run.tasks.values_list("status", flat=True))
     alerts_ok = True
     if RunStatus.SUCCESS in statuses:
+        changed = refresh_effective_severity()  # FR-06, before the alerts that use it
+        if stdout:
+            stdout.write(f"effective severity: {changed} CVEs updated")
         alerts_ok = _generate_alerts(run, watermark, stdout)
     if not statuses or statuses == {RunStatus.SUCCESS}:
         run.status = RunStatus.SUCCESS

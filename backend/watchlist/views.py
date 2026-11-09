@@ -65,7 +65,7 @@ class WatchlistView(WatchlistAccessMixin, View):
             item = form.save()
             messages.success(request, f"{item.product} added to the watchlist.")
             return redirect("watchlist:list")
-        messages.error(request, form_error_message(form))
+        messages.error(request, form_error_message(form), extra_tags="Not saved")
         return self.render(form, status=400)
 
     def render(self, form, status=200):
@@ -98,14 +98,14 @@ class WatchlistItemView(WatchlistAccessMixin, View):
                 criticality_form.save()
                 messages.success(request, f"Criticality of {item.product} set to {item.get_criticality_display()}.")
                 return redirect("watchlist:item", pk=item.pk)
-            messages.error(request, form_error_message(criticality_form))
+            messages.error(request, form_error_message(criticality_form), extra_tags="Not saved")
         else:
             alias_form = AliasForm(request.POST, product=item.product)
             if alias_form.is_valid():
                 alias = alias_form.save()
                 messages.success(request, f"Alias {alias.raw_vendor} {alias.raw_product} added to {item.product}.")
                 return redirect("watchlist:item", pk=item.pk)
-            messages.error(request, form_error_message(alias_form))
+            messages.error(request, form_error_message(alias_form), extra_tags="Not saved")
         return self.render(item, criticality_form, alias_form, status=400)
 
     def render(self, item, criticality_form, alias_form, status=200):
@@ -160,7 +160,7 @@ class UnmatchedNamesView(WatchlistAccessMixin, View):
             alias = form.save()
             messages.success(request, f"{alias.raw_vendor} {alias.raw_product} is now an alias of {item.product}.")
         else:
-            messages.error(request, form_error_message(form))
+            messages.error(request, form_error_message(form), extra_tags="Not saved")
         url = reverse("watchlist:unmatched")
         query = normalize_name(request.POST.get("q", ""))
         return redirect(f"{url}?{urlencode({'q': query})}" if query else url)

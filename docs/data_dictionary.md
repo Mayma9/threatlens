@@ -16,6 +16,8 @@ Tables created by Django migrations in the `public` schema. The warehouse (`dw` 
 | `nvd_status` | varchar(32) | NVD API (Sprint 2) | NVD analysis status |
 | `epss_score` | float, null | FIRST EPSS (Sprint 2) | Probability of exploitation within 30 days (0–1) |
 | `epss_percentile` | float, null | FIRST EPSS (Sprint 2) | Percentile of the EPSS score (0–1) |
+| `effective_severity` | varchar, indexed | Computed after each run | Severity of the effective CVSS score (FR-06: NVD > CNA > CISA ADP, newest version first); empty = no score yet. Used by the search filters (US03) |
+| `effective_score` | float, null | Computed after each run | Base score of that effective CVSS score |
 
 ### `cti_cvssmetric` — CVSS scores, one row per vulnerability × provider × version
 
