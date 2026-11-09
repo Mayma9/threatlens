@@ -32,9 +32,9 @@ Shared: machine learning (M1–M3), Power BI reports, environment setup, code re
 | Sprint | Dates | Goal | Validation |
 |---|---|---|---|
 | Sprint 1 | 08 Oct – 22 Oct 2026 | Foundations and first data slice | Validation 1 — 22 Oct 2026 (design review) |
-| Sprint 2 | 23 Oct – 05 Nov 2026 | Complete integration and first alerts | Validation 2 — 05 Nov 2026 |
-| Sprint 3 | 06 Nov – 19 Nov 2026 | Machine learning and prioritization | Validation 3 — 19 Nov 2026 |
-| Sprint 4 | 20 Nov – 03 Dec 2026 | Finalization | Validation 4 — 03 Dec 2026 (final) |
+| Sprint 2 | 23 Oct – 12 Nov 2026 | Complete integration and first alerts | Validation 2 — 12 Nov 2026 |
+| Sprint 3 | 13 Nov – 26 Nov 2026 | Machine learning and prioritization | Validation 3 — 26 Nov 2026 |
+| Sprint 4 | 27 Nov – 10 Dec 2026 | Finalization | Validation 4 — 10 Dec 2026 (final) |
 
 The product and sprint backlogs live in the GitHub Project **ThreatLens**.
 
