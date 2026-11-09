@@ -34,6 +34,16 @@ class Vulnerability(models.Model):
     def __str__(self) -> str:
         return self.cve_id
 
+    def effective_metric(self):
+        """CVSS score used as the effective severity (FR-06): NVD > CNA > CISA ADP, newest CVSS version first.
+
+        Returns None when no score exists (the ML prediction will fill this case in Sprint 3).
+        Uses the prefetched cvss_metrics when available.
+        """
+        order = {ScoreProvider.NVD: 0, ScoreProvider.CNA: 1, ScoreProvider.CISA_ADP: 2}
+        metrics = sorted(self.cvss_metrics.all(), key=lambda m: (order.get(m.provider, 9), -float(m.version or 0)))
+        return metrics[0] if metrics else None
+
 
 class CVSSMetric(models.Model):
     vulnerability = models.ForeignKey(Vulnerability, on_delete=models.CASCADE, related_name="cvss_metrics")

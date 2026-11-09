@@ -30,4 +30,8 @@ Found before Django's own file because "accounts" is listed before "django.contr
 
 {% block nav-global %}{% endblock %}
 
-{% block extrabody %}{{ block.super }}{% include "accounts/_lens.html" with variant="ambient" %}{% endblock %}
+{% block extrabody %}{{ block.super }}{% include "accounts/_lens.html" with variant="ambient" %}
+{# Admin errors and messages shown with SweetAlert2, like in the console #}
+<script src="{% static 'accounts/js/admin_alerts.js' %}"></script>
+{% include "accounts/_alerts_scripts.html" %}
+{% endblock %}

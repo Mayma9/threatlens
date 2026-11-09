@@ -40,6 +40,7 @@
           <th scope="col">Criticality</th>
           <th scope="col" class="text-end d-none d-md-table-cell">Aliases</th>
           <th scope="col" class="text-end">Affected CVEs</th>
+          <th scope="col" class="text-end">Open alerts</th>
           <th scope="col" class="d-none d-md-table-cell">Added</th>
           <th scope="col"><span class="visually-hidden">Actions</span></th>
         </tr>
@@ -53,12 +54,13 @@
           <td><span class="tl-crit tl-crit--{{ row.item.criticality }}">{{ row.item.get_criticality_display }}</span></td>
           <td class="text-end d-none d-md-table-cell">{{ row.aliases }}</td>
           <td class="text-end">{{ row.cves }}</td>
+          <td class="text-end">{% if row.open_alerts %}<span class="tl-alert-count">{{ row.open_alerts }}</span>{% else %}<span class="tl-muted">0</span>{% endif %}</td>
           <td class="tl-muted small d-none d-md-table-cell">{{ row.item.added_at|date:"d M Y" }}</td>
           <td class="text-end text-nowrap">
             <a class="btn btn-sm btn-outline-light" href="{% url 'watchlist:item' row.item.pk %}">Manage</a>
             <form method="post" action="{% url 'watchlist:remove' row.item.pk %}" class="d-inline"
                   data-tl-confirm="Remove {{ row.item.product }} from the watchlist?"
-                  data-confirm-text="No new alert will be raised for this product. Its aliases stay available."
+                  data-confirm-text="Its alerts and their history are deleted too, and no new alert will be raised for it. Its aliases stay available."
                   data-confirm-button="Remove">
               {% csrf_token %}
               <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>

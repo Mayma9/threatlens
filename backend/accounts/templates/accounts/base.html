@@ -64,8 +64,7 @@
     ThreatLens, a cybersecurity threat intelligence data warehouse. TEK-UP ING-4 SDIA project.
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.all.min.js"></script>
-  <script src="{% static 'accounts/js/alerts.js' %}"></script>
+  {% include "accounts/_alerts_scripts.html" %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

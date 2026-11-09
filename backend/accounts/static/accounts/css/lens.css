@@ -8,6 +8,7 @@
   --tl-cyan: #2dd4ef;      /* signal, primary actions, analyst */
   --tl-lavender: #a78bfa;  /* CISO */
   --tl-amber: #f5b544;     /* actively exploited (KEV) */
+  --tl-danger: #ff6b6b;    /* errors, critical */
   --tl-frost: #e8f0fa;     /* headings */
   --tl-mist: #9fb3ca;      /* secondary text */
   --tl-line: rgba(159, 179, 202, 0.18);
