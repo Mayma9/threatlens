@@ -127,3 +127,7 @@ STAGING_DIR = Path(os.environ.get("STAGING_DIR", REPO_DIR / "data" / "staging"))
 NVD_API_KEY = os.environ.get("NVD_API_KEY", "")
 ABUSECH_AUTH_KEY = os.environ.get("ABUSECH_AUTH_KEY", "")
 DEMO_USER_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "")
+
+# Alerts (US08): days given to fix a new alert, by effective severity of the CVE.
+# CISA's KEV due date is kept when it is earlier. Rule proposed by the team, to adjust if needed.
+ALERT_DUE_DAYS = {"CRITICAL": 7, "HIGH": 30, "MEDIUM": 90, "LOW": 180, "UNKNOWN": 30}

@@ -46,15 +46,11 @@ def _main_word(text: str) -> str:
     return max(words, key=len, default="")
 
 
-def unmatched_names(organization, query: str = "", limit: int = UNMATCHED_LIMIT):
-    """Names found in CVE records that match no watched product nor alias of the organization.
+def known_names_and_hints(items):
+    """For a set of watchlist items: the names already matched, and a filter for names that look like them.
 
-    Without a query, only names that look like a watched product are listed (same main vendor
-    word, or the product name inside), so the analyst reviews likely spellings first.
+    A raw name that is already an alias (of any product) counts as known: it cannot become a second alias.
     """
-    items = list(WatchlistItem.objects.filter(organization=organization).select_related("product")
-                 .prefetch_related("product__aliases"))
-    # A raw name that is already an alias (of any product) cannot become a second alias
     known = set(ProductAlias.objects.values_list("raw_vendor", "raw_product"))
     hints = []
     for item in items:
@@ -64,12 +60,24 @@ def unmatched_names(organization, query: str = "", limit: int = UNMATCHED_LIMIT)
             hints.append(Q(vendor__icontains=word))
         if len(item.product.name) >= 4:
             hints.append(Q(name__icontains=item.product.name))
+    return known, (reduce(or_, hints) if hints else None)
+
+
+def unmatched_names(organization, query: str = "", limit: int = UNMATCHED_LIMIT):
+    """Names found in CVE records that match no watched product nor alias of the organization.
+
+    Without a query, only names that look like a watched product are listed (same main vendor
+    word, or the product name inside), so the analyst reviews likely spellings first.
+    """
+    items = list(WatchlistItem.objects.filter(organization=organization).select_related("product")
+                 .prefetch_related("product__aliases"))
+    known, hints = known_names_and_hints(items)
 
     query = " ".join(query.split()).lower()
     if query:
         condition = Q(vendor__icontains=query) | Q(name__icontains=query)
-    elif hints:
-        condition = reduce(or_, hints)
+    elif hints is not None:
+        condition = hints
     else:
         return []
 

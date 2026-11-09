@@ -6,6 +6,10 @@ import traceback
 
 from django.utils import timezone
 
+from alerts.models import AlertGeneration
+from alerts.services import cve_watermark, generate_alerts
+from cti.models import Vulnerability
+
 from .connectors import REGISTRY
 from .models import IngestionTask, PipelineRun, RunStatus, Source
 
@@ -20,6 +24,7 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
     ensure_sources()
     selected = [name for name in REGISTRY if not sources or name in sources]
     run = PipelineRun.objects.create(triggered_by=triggered_by)
+    watermark = cve_watermark()  # CVEs updated after it are the new or updated ones of this run
 
     for name in selected:
         source = Source.objects.get(name=name)
@@ -48,12 +53,37 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
             )
 
     statuses = set(run.tasks.values_list("status", flat=True))
+    alerts_ok = True
+    if RunStatus.SUCCESS in statuses:
+        alerts_ok = _generate_alerts(run, watermark, stdout)
     if not statuses or statuses == {RunStatus.SUCCESS}:
         run.status = RunStatus.SUCCESS
     elif statuses == {RunStatus.FAILED}:
         run.status = RunStatus.FAILED
     else:
         run.status = RunStatus.PARTIAL
+    if run.status == RunStatus.SUCCESS and not alerts_ok:
+        run.status = RunStatus.PARTIAL
     run.ended_at = timezone.now()
     run.save()
     return run
+
+
+def _generate_alerts(run, watermark, stdout=None) -> bool:
+    """Alert step (FR-08), after loading: new or updated CVEs of this run against every watchlist."""
+    new_or_updated = Vulnerability.objects.all()
+    if watermark:
+        new_or_updated = new_or_updated.filter(source_updated_at__gt=watermark)
+    try:
+        result = generate_alerts(new_or_updated, run=run)
+    except Exception as exc:  # noqa: BLE001 - logged, the loaded data stays valid
+        AlertGeneration.objects.create(run=run, error_message=f"{type(exc).__name__}: {exc}\n\n{traceback.format_exc(limit=5)}")
+        if stdout:
+            stdout.write(f"alerts: FAILED - {type(exc).__name__}: {exc}")
+        return False
+    if stdout:
+        stdout.write(
+            f"alerts: {result.alerts_created} created for {result.cves_checked} new or updated CVEs, "
+            f"{len(result.unmatched_names)} unmatched names to review"
+        )
+    return True

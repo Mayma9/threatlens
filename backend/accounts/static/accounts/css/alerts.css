@@ -1,0 +1,52 @@
+/* SweetAlert2 pop-ups, toasts and confirmations (accounts/js/alerts.js), for the console and the admin.
+   Buttons are styled here, without Bootstrap, because the admin does not load Bootstrap. */
+
+/* Set on body: SweetAlert2 injects its own :root values when it loads, after this file */
+.tl-body {
+  --swal2-background: var(--tl-navy);
+  --swal2-color: #c9d6e8;
+  --swal2-border: 1px solid var(--tl-line);
+  --swal2-border-radius: 14px;
+  --swal2-backdrop: rgba(4, 10, 18, 0.72);
+  --swal2-close-button-color: var(--tl-mist);
+  --swal2-timer-progress-bar-background: var(--tl-cyan);
+  --swal2-toast-border: 1px solid var(--tl-line);
+  --swal2-toast-box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+body:not(.swal2-toast-shown) .swal2-container.swal2-backdrop-show { backdrop-filter: blur(3px); } /* pop-ups only, not toasts */
+.swal2-popup.tl-swal { font-family: var(--tl-text); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); }
+.tl-swal .tl-swal__title { font-family: var(--tl-display); color: var(--tl-frost); font-weight: 600; font-size: 1.35rem; }
+.tl-swal .tl-swal__text { color: var(--tl-mist); font-size: 1rem; line-height: 1.5; }
+.swal2-toast.tl-swal .tl-swal__title { font-family: var(--tl-text); font-weight: 500; font-size: 0.95rem; color: var(--tl-frost); }
+.tl-swal .swal2-actions { gap: 0.75rem; }
+
+/* Icon colours on the dark panel: red = error, amber = warning, cyan = success and info */
+.tl-swal .swal2-icon.swal2-error { border-color: var(--tl-danger); color: var(--tl-danger); }
+.tl-swal .swal2-icon.swal2-error [class^="swal2-x-mark-line"] { background-color: var(--tl-danger); }
+.tl-swal .swal2-icon.swal2-warning { border-color: var(--tl-amber); color: var(--tl-amber); }
+.tl-swal .swal2-icon.swal2-info { border-color: var(--tl-cyan); color: var(--tl-cyan); }
+.tl-swal .swal2-icon.swal2-success { border-color: var(--tl-cyan); color: var(--tl-cyan); }
+.tl-swal .swal2-icon.swal2-success [class^="swal2-success-line"] { background-color: var(--tl-cyan); }
+.tl-swal .swal2-icon.swal2-success .swal2-success-ring { border-color: rgba(45, 212, 239, 0.3); }
+
+/* Toasts start under the header so they never cover the "Log out" button */
+body.tl-body.swal2-toast-shown .swal2-container.swal2-top-end { top: 3.75rem; }
+
+/* Buttons */
+.tl-swal-btn {
+  font-family: var(--tl-text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 0.45rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.tl-swal-btn:focus-visible { outline: 2px solid var(--tl-cyan); outline-offset: 2px; }
+.tl-swal-btn--primary { background: var(--tl-cyan); border-color: var(--tl-cyan); color: var(--tl-abyss); }
+.tl-swal-btn--primary:hover { background: #7ee6f7; border-color: #7ee6f7; }
+.tl-swal-btn--danger { background: var(--tl-danger); border-color: var(--tl-danger); color: var(--tl-abyss); }
+.tl-swal-btn--danger:hover { background: #ff8f8f; border-color: #ff8f8f; }
+.tl-swal-btn--ghost { background: transparent; border-color: var(--tl-frost); color: var(--tl-frost); }
+.tl-swal-btn--ghost:hover { background: rgba(232, 240, 250, 0.08); }

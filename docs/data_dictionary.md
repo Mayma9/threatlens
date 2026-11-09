@@ -77,6 +77,42 @@ Unique together: (`organization_id`, `product_id`).
 Unique together: (`raw_vendor`, `raw_product`): a raw name designates one product only.
 **Matching:** a watched product matches the CVE-record products whose (vendor, name) is its own name or one of its aliases (`watchlist/matching.py`). The *Unmatched names* page lists the names of CVE records that look like a watched product but match none, so the analyst can turn them into aliases.
 
+## Alerts (`alerts` app)
+
+### `alerts_alert` — a CVE that affects a watched product (US08, FR-08, FR-09)
+
+| Column | Type | Description |
+|---|---|---|
+| `vulnerability_id` | FK → `cti_vulnerability` | The CVE |
+| `watchlist_item_id` | FK → `watchlist_watchlistitem` | The watched product (and so the organization) |
+| `created_at` | timestamptz | Creation by the alert step of the pipeline |
+| `status` | varchar | NEW, IN_PROGRESS, FIXED, RISK_ACCEPTED, FALSE_POSITIVE (open = NEW or IN_PROGRESS) |
+| `priority_score` | float | 0 until the prioritization is computed (US11, FR-10) |
+| `due_date` | date | Creation date + `ALERT_DUE_DAYS[effective severity]` (CRITICAL 7, HIGH 30, MEDIUM 90, LOW 180, no score 30 days); CISA's KEV due date when it is earlier |
+| `assignee_id` | FK → `accounts_user`, null | Analyst in charge (US11) |
+
+Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for the same CVE and watched product.
+**Effective severity** (FR-06): the CVSS score of the first provider in the order NVD > CNA > CISA ADP, newest CVSS version first (`Vulnerability.effective_metric()`).
+
+### `alerts_alertstatuschange` — status history of an alert
+
+| Column | Type | Description |
+|---|---|---|
+| `alert_id` | FK → `alerts_alert` | |
+| `old_status`, `new_status` | varchar | Empty old status = creation |
+| `comment` | text | e.g. "Created by pipeline run 12." |
+| `changed_at` | timestamptz | |
+| `changed_by_id` | FK → `accounts_user`, null | Empty = the system (pipeline) |
+
+### `alerts_alertgeneration` — result of the alert step of a run
+
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | FK → `pipeline_pipelinerun`, null | Empty = `generate_alerts` command |
+| `cves_checked`, `alerts_created` | int | New or updated CVEs checked, alerts created |
+| `unmatched_names` | JSON | Names of these CVEs that look like a watched product but match no name or alias ("vendor / product") |
+| `error_message` | text | Set when the step failed (the run is then PARTIAL) |
+
 ## ETL monitoring (`pipeline` app)
 
 ### `pipeline_source`

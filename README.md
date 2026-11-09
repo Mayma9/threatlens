@@ -131,7 +131,15 @@ docker compose run --rm etl                                              # every
 | `--full` | reload every record, not only those updated since the last load |
 | `--triggered-by USERNAME` | record the administrator who started the run |
 
-Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message. Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md).
+Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message.
+
+**Alerts (US08).** At the end of each run, the new or updated CVEs are matched with every watchlist (product names and aliases): one alert per CVE and watched product, status NEW, with a due date (`ALERT_DUE_DAYS` in `settings.py`). The admin page *Alert generations* shows, for each run, the CVEs checked, the alerts created and the unmatched names to review. For CVEs loaded before a product was added to the watchlist:
+
+```bash
+docker compose run --rm etl python manage.py generate_alerts --since 2026-10-01
+```
+
+Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md).
 
 ### Daily run (Windows Task Scheduler)
 

@@ -52,3 +52,11 @@ class TemplateLocationTests(TestCase):
         self.assertContains(response, "ThreatLens administration")
         self.assertContains(response, "accounts/css/admin.css")
         self.assertNotContains(response, "admin/css/dark_mode.css")  # always dark, no light/dark switch
+
+    def test_admin_errors_use_sweetalert(self):
+        self.client.force_login(make_user("analyst", Role.ANALYST))
+        response = self.client.get("/admin/login/?next=/admin/")
+        self.assertContains(response, "errornote")  # Django's message, turned into a pop-up by the scripts below
+        self.assertContains(response, "accounts/js/admin_alerts.js")
+        self.assertContains(response, "sweetalert2@11.26.24")
+        self.assertContains(response, "accounts/css/alerts.css")

@@ -28,8 +28,8 @@
     popup: "tl-swal",
     title: "tl-swal__title",
     htmlContainer: "tl-swal__text",
-    confirmButton: "btn btn-primary px-4",
-    cancelButton: "btn btn-outline-light px-4",
+    confirmButton: "tl-swal-btn tl-swal-btn--primary",
+    cancelButton: "tl-swal-btn tl-swal-btn--ghost",
     timerProgressBar: "tl-swal__progress",
   };
 
@@ -45,7 +45,10 @@
 
   // 1. Messages
   var alerts = Array.prototype.map.call(document.querySelectorAll("[data-tl-alert]"), function (el) {
-    el.classList.add("d-none"); // the pop-up replaces the inline alert
+    el.style.display = "none"; // the pop-up replaces the inline alert
+    if (el.parentElement && el.parentElement.matches("ul.messagelist")) {
+      el.parentElement.style.display = "none"; // admin message list
+    }
     var text = el.dataset.text || el.textContent.trim();
     return { level: el.dataset.level || "info", title: el.dataset.title, text: text, button: el.dataset.button };
   });
@@ -83,7 +86,7 @@
         cancelButtonText: "Cancel",
         reverseButtons: true,
         focusCancel: true,
-        customClass: Object.assign({}, CLASSES, { confirmButton: "btn btn-danger px-4" }),
+        customClass: Object.assign({}, CLASSES, { confirmButton: "tl-swal-btn tl-swal-btn--danger" }),
       }).then(function (result) {
         if (result.isConfirmed) {
           form.submit(); // submit() does not fire the submit event again

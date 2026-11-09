@@ -7,6 +7,7 @@ sees the watchlist of their own organization.
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -14,6 +15,7 @@ from django.views import View
 
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
+from alerts.models import OPEN_STATUSES
 
 from .forms import AliasForm, CriticalityForm, WatchlistItemForm
 from .matching import affected_cve_count, unmatched_names
@@ -68,9 +70,11 @@ class WatchlistView(WatchlistAccessMixin, View):
 
     def render(self, form, status=200):
         rows = []
-        for item in self.items().prefetch_related("product__aliases"):
+        items = self.items().prefetch_related("product__aliases").annotate(
+            open_alerts=Count("alerts", filter=Q(alerts__status__in=OPEN_STATUSES)))
+        for item in items:
             rows.append({"item": item, "aliases": len(item.product.aliases.all()),
-                         "cves": affected_cve_count(item.product)})
+                         "cves": affected_cve_count(item.product), "open_alerts": item.open_alerts})
         context = {"form": form, "rows": rows, "organization": self.organization}
         return render(self.request, self.template_name, context, status=status)
 
