@@ -1,0 +1,79 @@
+{% extends "accounts/base.html" %}
+{% block title %}{{ item.product }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb tl-breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'watchlist:list' %}">Watchlist</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ item.product }}</li>
+  </ol>
+</nav>
+
+<h1 class="tl-page-title tl-product tl-product--title">
+  <span class="tl-product__vendor">{{ item.product.vendor }}</span>
+  <span class="tl-product__name">{{ item.product.name }}</span>
+</h1>
+<p class="tl-muted mb-0">
+  <span class="tl-crit tl-crit--{{ item.criticality }}">{{ item.get_criticality_display }}</span>
+  <span class="ms-2">{{ cves }} CVE{{ cves|pluralize }} affect this product through its name and aliases.</span>
+</p>
+
+<div class="row g-3 mt-3">
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-3">Business criticality</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="criticality">
+        <label for="{{ criticality_form.criticality.id_for_label }}" class="form-label">Criticality</label>
+        {{ criticality_form.criticality }}
+        {% for error in criticality_form.criticality.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        <p class="small tl-muted mt-2">Higher criticality raises the priority of this product's alerts.</p>
+        <button type="submit" class="btn btn-primary btn-sm">Save criticality</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-1">Aliases</h2>
+      <p class="small tl-muted">Other spellings of this product published by the CNAs. CVEs that use them match this product too.</p>
+
+      {% if aliases %}
+      <ul class="list-unstyled tl-alias-list">
+        {% for alias in aliases %}
+        <li>
+          <span class="tl-product"><span class="tl-product__vendor">{{ alias.raw_vendor }}</span>
+            <span class="tl-product__name">{{ alias.raw_product }}</span></span>
+          <form method="post" action="{% url 'watchlist:remove-alias' alias.pk %}" class="d-inline"
+                data-tl-confirm="Remove the alias {{ alias.raw_vendor }} {{ alias.raw_product }}?"
+                data-confirm-text="CVEs that use this spelling will no longer match {{ item.product }}."
+                data-confirm-button="Remove">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="tl-muted">No alias yet. Check the <a href="{% url 'watchlist:unmatched' %}">unmatched names</a> for other spellings.</p>
+      {% endif %}
+
+      <form method="post" novalidate class="row g-2 align-items-start mt-2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="alias">
+        {% for field in alias_form %}
+        <div class="col-sm-5">
+          <label for="{{ field.id_for_label }}" class="form-label small">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <div class="col-sm-2 d-grid">
+          <span class="form-label small d-none d-sm-block" aria-hidden="true">&nbsp;</span>
+          <button type="submit" class="btn btn-outline-primary">Add alias</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

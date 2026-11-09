@@ -1,0 +1,71 @@
+{% extends "accounts/base.html" %}
+{% block title %}Unmatched names{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb tl-breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'watchlist:list' %}">Watchlist</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Unmatched names</li>
+  </ol>
+</nav>
+<h1 class="tl-page-title">Unmatched names</h1>
+<p class="tl-muted">Vendor and product names found in CVE records that match nothing in your watchlist.
+  {% if not query %}The list shows the names that look like a watched product.{% endif %}
+  Turn a name into an alias so that its CVEs match the right product.</p>
+
+<form method="get" class="row g-2 mb-4" role="search">
+  <div class="col-sm-8 col-lg-6">
+    <label for="q" class="visually-hidden">Search a vendor or product name</label>
+    <input type="search" id="q" name="q" value="{{ query }}" class="form-control" placeholder="Search any vendor or product name, e.g. fortinet">
+  </div>
+  <div class="col-auto"><button type="submit" class="btn btn-outline-primary">Search</button></div>
+  {% if query %}<div class="col-auto"><a class="btn btn-link" href="{% url 'watchlist:unmatched' %}">Clear</a></div>{% endif %}
+</form>
+
+<section class="tl-panel overflow-hidden">
+  {% if not items %}
+  <div class="p-4">
+    <h2 class="h6">Your watchlist is empty</h2>
+    <p class="tl-muted mb-0">Add a product to the <a href="{% url 'watchlist:list' %}">watchlist</a> first: names can only become aliases of a watched product.</p>
+  </div>
+  {% elif names %}
+  <div class="table-responsive">
+    <table class="table tl-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Name in CVE records</th>
+          <th scope="col" class="text-end">CVEs</th>
+          <th scope="col">Make it an alias of</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name in names %}
+        <tr>
+          <td><span class="tl-product"><span class="tl-product__vendor">{{ name.vendor }}</span>
+            <span class="tl-product__name">{{ name.name }}</span></span></td>
+          <td class="text-end">{{ name.cve_count }}</td>
+          <td>
+            <form method="post" class="d-flex gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="raw_vendor" value="{{ name.vendor }}">
+              <input type="hidden" name="raw_product" value="{{ name.name }}">
+              <input type="hidden" name="q" value="{{ query }}">
+              <label for="item-{{ forloop.counter }}" class="visually-hidden">Watched product</label>
+              <select id="item-{{ forloop.counter }}" name="item" class="form-select form-select-sm">
+                {% for item in items %}<option value="{{ item.pk }}"{% if item.pk == name.suggested_item_id %} selected{% endif %}>{{ item.product }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">Add alias</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-4">
+    <h2 class="h6">Nothing to review</h2>
+    <p class="tl-muted mb-0">{% if query %}No unmatched name contains "{{ query }}".{% else %}Every name that looks like a watched product is already matched.{% endif %}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

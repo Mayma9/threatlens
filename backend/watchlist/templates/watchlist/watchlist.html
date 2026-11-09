@@ -1,0 +1,79 @@
+{% extends "accounts/base.html" %}
+{% block title %}Watchlist{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+  <div>
+    <h1 class="tl-page-title">Watchlist</h1>
+    <p class="tl-muted mb-0">Products run by <strong>{{ organization }}</strong>. New CVEs that affect them raise alerts.</p>
+  </div>
+  <a class="btn btn-outline-primary btn-sm" href="{% url 'watchlist:unmatched' %}">
+    <i class="bi bi-shuffle"></i> Review unmatched names
+  </a>
+</div>
+
+<section class="tl-panel p-4 mt-4">
+  <h2 class="h6 mb-3">Add a product</h2>
+  <form method="post" novalidate class="row g-3 align-items-start">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="{% if field.name == 'criticality' %}col-md-2{% else %}col-md-4{% endif %}">
+      <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="col-md-2 d-grid">
+      <span class="form-label d-none d-md-block" aria-hidden="true">&nbsp;</span>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add</button>
+    </div>
+  </form>
+  <p class="small tl-muted mt-3 mb-0">Names are stored in lowercase, as in the CVE records. Criticality goes from 1 (low) to 4 (critical).</p>
+</section>
+
+<section class="tl-panel mt-4 overflow-hidden">
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table tl-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Product</th>
+          <th scope="col">Criticality</th>
+          <th scope="col" class="text-end d-none d-md-table-cell">Aliases</th>
+          <th scope="col" class="text-end">Affected CVEs</th>
+          <th scope="col" class="d-none d-md-table-cell">Added</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><a href="{% url 'watchlist:item' row.item.pk %}" class="tl-product">
+            <span class="tl-product__vendor">{{ row.item.product.vendor }}</span>
+            <span class="tl-product__name">{{ row.item.product.name }}</span></a></td>
+          <td><span class="tl-crit tl-crit--{{ row.item.criticality }}">{{ row.item.get_criticality_display }}</span></td>
+          <td class="text-end d-none d-md-table-cell">{{ row.aliases }}</td>
+          <td class="text-end">{{ row.cves }}</td>
+          <td class="tl-muted small d-none d-md-table-cell">{{ row.item.added_at|date:"d M Y" }}</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-light" href="{% url 'watchlist:item' row.item.pk %}">Manage</a>
+            <form method="post" action="{% url 'watchlist:remove' row.item.pk %}" class="d-inline"
+                  data-tl-confirm="Remove {{ row.item.product }} from the watchlist?"
+                  data-confirm-text="No new alert will be raised for this product. Its aliases stay available."
+                  data-confirm-button="Remove">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-4">
+    <h2 class="h6">No product watched yet</h2>
+    <p class="tl-muted mb-0">Add the products your organization runs, for example <strong>fortinet</strong> / <strong>fortios</strong>.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
