@@ -29,8 +29,9 @@
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav me-auto">
           {% if user.is_analyst %}
-          <li class="nav-item"><span class="nav-link disabled" title="Sprint 2">Vulnerabilities</span></li>
           {% with section=request.resolver_match.app_name %}
+          <li class="nav-item"><a class="nav-link{% if section == 'cti' %} active{% endif %}"
+              {% if section == 'cti' %}aria-current="page"{% endif %} href="{% url 'cti:search' %}">Vulnerabilities</a></li>
           <li class="nav-item"><a class="nav-link{% if section == 'watchlist' %} active{% endif %}"
               {% if section == 'watchlist' %}aria-current="page"{% endif %} href="{% url 'watchlist:list' %}">Watchlist</a></li>
           {% endwith %}

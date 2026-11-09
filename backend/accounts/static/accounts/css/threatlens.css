@@ -151,3 +151,33 @@ a.tl-product:hover .tl-product__name { color: var(--tl-cyan); }
 .btn-danger { --bs-btn-bg: var(--tl-danger); --bs-btn-border-color: var(--tl-danger); --bs-btn-color: var(--tl-abyss); --bs-btn-hover-bg: #ff8f8f; --bs-btn-hover-border-color: #ff8f8f; --bs-btn-hover-color: var(--tl-abyss); }
 .form-control::placeholder { color: rgba(159, 179, 202, 0.5); }
 .tl-alert-count { display: inline-block; min-width: 1.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--tl-amber); color: var(--tl-abyss); font-weight: 600; text-align: center; }
+
+/* ---------- Vulnerability search ---------- */
+.tl-cve__id { color: var(--tl-frost); font-weight: 600; white-space: nowrap; }
+.tl-cve__text { color: var(--tl-mist); font-size: 0.875rem; max-width: 70ch; margin-top: 0.2rem; }
+.tl-kev {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tl-amber);
+  color: var(--tl-abyss);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: 0.1em;
+}
+.tl-sev {
+  --tl-sev-color: var(--tl-mist);
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--tl-sev-color);
+  color: var(--tl-sev-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.tl-sev--critical { --tl-sev-color: var(--tl-danger); background: rgba(255, 107, 107, 0.1); }
+.tl-sev--high { --tl-sev-color: var(--tl-amber); }
+.tl-sev--medium { --tl-sev-color: var(--tl-cyan); }
+.tl-sev--unscored { border-style: dashed; font-weight: 500; }
+.tl-pagination { --bs-pagination-bg: rgba(16, 36, 59, 0.78); --bs-pagination-border-color: var(--tl-line); --bs-pagination-color: var(--tl-cyan); --bs-pagination-hover-bg: rgba(45, 212, 239, 0.1); --bs-pagination-hover-color: var(--tl-frost); --bs-pagination-active-bg: var(--tl-cyan); --bs-pagination-active-border-color: var(--tl-cyan); --bs-pagination-active-color: var(--tl-abyss); }

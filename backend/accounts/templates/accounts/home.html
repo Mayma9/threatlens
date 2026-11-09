@@ -12,7 +12,10 @@
     <section class="tl-panel tl-panel--analyst h-100 p-4">
       <h2 class="h6"><i class="bi bi-search"></i> Triage</h2>
       <p class="small tl-muted">Vulnerability search, enriched CVE record, watchlist and prioritized alerts.</p>
-      <a class="btn btn-sm btn-outline-primary" href="{% url 'watchlist:list' %}">Open the watchlist</a>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'cti:search' %}">Search vulnerabilities</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'watchlist:list' %}">Open the watchlist</a>
+      </div>
     </section>
   </div>
   {% endif %}

@@ -26,6 +26,11 @@ class Vulnerability(models.Model):
     nvd_status = models.CharField(max_length=32, blank=True)  # NVD connector (Sprint 2)
     epss_score = models.FloatField(null=True, blank=True)  # EPSS connector (Sprint 2)
     epss_percentile = models.FloatField(null=True, blank=True)
+    # Effective severity (FR-06), copied from the CVSS scores after each pipeline run
+    # (cti.services.refresh_effective_severity) so that searches can filter on it quickly.
+    # Empty = no CVSS score yet (the ML prediction will fill this case in Sprint 3).
+    effective_severity = models.CharField(max_length=10, choices=Severity.choices, blank=True, db_index=True)
+    effective_score = models.FloatField(null=True, blank=True)
 
     class Meta:
         ordering = ["-published_at"]

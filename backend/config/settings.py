@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",  # thousands separators in templates (intcomma)
     "rest_framework",
     # Other ThreatLens apps
     "cti",
