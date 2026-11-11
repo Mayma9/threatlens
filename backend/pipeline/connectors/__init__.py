@@ -5,8 +5,10 @@ REGISTRY order = execution order: CVE records first, then the sources that refer
 
 from .cve_list_v5 import CveListV5Connector
 from .kev import KevConnector
+from .epss import EpssConnector
 
 REGISTRY = {
     CveListV5Connector.name: CveListV5Connector,
     KevConnector.name: KevConnector,
+    EpssConnector.name: EpssConnector,
 }

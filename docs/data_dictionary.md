@@ -14,10 +14,12 @@ Tables created by Django migrations in the `public` schema. The warehouse (`dw` 
 | `published_at` | timestamptz, null | CVE List V5 `datePublished` | Publication date (records before 2023 may be inconsistent, risk R3) |
 | `source_updated_at` | timestamptz, null, indexed | CVE List V5 `dateUpdated` | Last update of the record; watermark of the incremental load |
 | `nvd_status` | varchar(32) | NVD API (Sprint 2) | NVD analysis status |
-| `epss_score` | float, null | FIRST EPSS (Sprint 2) | Probability of exploitation within 30 days (0–1) |
-| `epss_percentile` | float, null | FIRST EPSS (Sprint 2) | Percentile of the EPSS score (0–1) |
+| `epss_score` | float, null | FIRST EPSS (`epss` connector) | Probability of exploitation within 30 days (0–1) |
+| `epss_percentile` | float, null | FIRST EPSS (`epss` connector) | Percentile of the EPSS score (0–1) |
 | `effective_severity` | varchar, indexed | Computed after each run | Severity of the effective CVSS score (FR-06: NVD > CNA > CISA ADP, newest version first); empty = no score yet. Used by the search filters (US03) |
 | `effective_score` | float, null | Computed after each run | Base score of that effective CVSS score |
+
+EPSS columns: only the latest score is kept; the `epss` connector updates them in place at each run. The model version and the score date of each run are in `pipeline_ingestiontask.quality_report` (history belongs to the warehouse).
 
 ### `cti_cvssmetric` — CVSS scores, one row per vulnerability × provider × version
 
@@ -121,7 +123,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 
 | Column | Description |
 |---|---|
-| `name` | Connector key (`cve`, `kev`), unique |
+| `name` | Connector key (`cve`, `kev`, `epss`), unique |
 | `label`, `url` | Display name and reference URL |
 | `frequency` | Update frequency (default `daily`) |
 | `is_active` | Disabled sources are skipped by `run_pipeline` (FR-15) |
@@ -158,4 +160,9 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 | KEV | CVE already in `cti_vulnerability` | otherwise rejected |
 | KEV | `dateAdded` is a valid date | otherwise rejected |
 | KEV | CVE once in the catalog | duplicates rejected |
+| EPSS | identifier matches `CVE-YYYY-NNNN…` | otherwise rejected |
+| EPSS | `epss` and `percentile` are numbers | otherwise rejected |
+| EPSS | `epss` and `percentile` between 0 and 1 (limits included) | otherwise rejected |
+| EPSS | CVE already in `cti_vulnerability` | otherwise rejected |
+| EPSS | CVE once in the file | duplicates rejected |
 | all | re-running the same period | no duplicate row (upsert, FR-18) |
