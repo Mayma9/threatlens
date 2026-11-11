@@ -19,7 +19,9 @@ Tables created by Django migrations in the `public` schema. The warehouse (`dw` 
 | `effective_severity` | varchar, indexed | Computed after each run | Severity of the effective CVSS score (FR-06: NVD > CNA > CISA ADP, newest version first); empty = no score yet. Used by the search filters (US03) |
 | `effective_score` | float, null | Computed after each run | Base score of that effective CVSS score |
 
-### `cti_cvssmetric` —EPSS columns: only the latest score is kept; the `epss` connector updates them in place at each run. The model version and the score date of each run are in `pipeline_ingestiontask.quality_report` (history belongs to the warehouse). CVSS scores, one row per vulnerability × provider × version
+EPSS columns: only the latest score is kept; the `epss` connector updates them in place at each run. The model version and the score date of each run are in `pipeline_ingestiontask.quality_report` (history belongs to the warehouse).
+
+### `cti_cvssmetric` — CVSS scores, one row per vulnerability × provider × version
 
 | Column | Type | Description |
 |---|---|---|
