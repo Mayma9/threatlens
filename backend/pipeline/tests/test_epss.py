@@ -7,6 +7,7 @@ the score date of the file are kept in the quality report of the ingestion task.
 import gzip
 import tempfile
 from pathlib import Path
+from unittest import mock
 
 from django.test import TestCase, override_settings
 
@@ -86,3 +87,15 @@ class EpssConnectorTests(TestCase):
         score, percentile = self.scores()["CVE-2024-0001"]  # still one row for this CVE
         self.assertAlmostEqual(score, 0.9)
         self.assertAlmostEqual(percentile, 0.95)
+
+    def test_duplicate_in_another_batch_is_rejected(self):
+        # Batches of 2 rows: the second CVE-2024-0001 line comes in the second batch
+        with mock.patch("pipeline.connectors.base.BATCH_SIZE", 2):
+            task = self.run_epss([
+                ("CVE-2024-0001", "0.1", "0.2"),
+                ("CVE-2024-0002", "0.3", "0.4"),
+                ("CVE-2024-0001", "0.9", "0.95"),  # duplicate, in the next batch -> rejected
+            ]).tasks.get()
+        self.assertEqual((task.extracted, task.loaded, task.rejected), (3, 2, 1))
+        self.assertEqual(task.quality_report["rejected_by_reason"], {"duplicate row in the file": 1})
+        self.assertAlmostEqual(self.scores()["CVE-2024-0001"][0], 0.1)  # the first line is kept
