@@ -52,6 +52,10 @@ class EpssConnector(BaseConnector):
     score_date: date | None = None
     model_version: str = ""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.seen: set[str] = set()  # CVEs already accepted in this run, across every batch
+
     def snapshot_suffix(self) -> str:
         return ".csv.gz"
 
@@ -79,7 +83,7 @@ class EpssConnector(BaseConnector):
         known = set(
             Vulnerability.objects.filter(cve_id__in=[r["cve_id"] for r in records]).values_list("cve_id", flat=True)
         )
-        valid, rejects, seen = [], [], set()
+        valid, rejects = [], []
         for record in records:
             cve_id = record["cve_id"]
             if not CVE_ID.match(cve_id):
@@ -90,10 +94,10 @@ class EpssConnector(BaseConnector):
                 rejects.append(Reject(cve_id, "epss or percentile outside 0..1"))
             elif cve_id not in known:
                 rejects.append(Reject(cve_id, "CVE not in the database (run the cve source first)"))
-            elif cve_id in seen:
+            elif cve_id in self.seen:
                 rejects.append(Reject(cve_id, "duplicate row in the file"))
             else:
-                seen.add(cve_id)
+                self.seen.add(cve_id)
                 valid.append(record)
         return valid, rejects
 
