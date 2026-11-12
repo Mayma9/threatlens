@@ -5,8 +5,7 @@
 -- Running it twice gives the same rows (idempotent).
 --
 -- Not filled yet (no source in the operational schema): dim_technique, bridge_cve_technique,
--- dim_indicator, dim_malware, dim_threat_type and fact_ioc stay empty; dim_weakness only has the
--- "unknown" member until the CWE connector exists.
+-- dim_indicator, dim_malware, dim_threat_type and fact_ioc stay empty.
 
 TRUNCATE
     dw.fact_vulnerability, dw.fact_alert, dw.fact_ioc, dw.bridge_cve_technique,
@@ -49,6 +48,7 @@ SELECT
     name,
     CASE name
         WHEN 'cve'  THEN 'vulnerability catalog'
+        WHEN 'cwe'  THEN 'weakness catalog'
         WHEN 'kev'  THEN 'exploitation catalog'
         WHEN 'epss' THEN 'scoring'
         ELSE 'other'
@@ -72,9 +72,13 @@ INSERT INTO dw.dim_alert_status (status_key, label, is_open) VALUES
     (4, 'RISK_ACCEPTED',  false),
     (5, 'FALSE_POSITIVE', false);
 
--- The CWE catalog does not exist yet: every CVE points to the unknown weakness.
+-- CWE catalog (cwe connector) and the CWEs named by the CVE records. Key 0: the record names no CWE.
 INSERT INTO dw.dim_weakness (weakness_key, cwe_id, name) VALUES
-    (0, 'unknown', 'Unknown weakness (CWE connector not loaded yet)');
+    (0, 'unknown', 'No CWE named by the CVE record');
+
+INSERT INTO dw.dim_weakness (weakness_key, cwe_id, name)
+SELECT id, cwe_id, name
+FROM public.cti_weakness;
 
 INSERT INTO dw.dim_vulnerability (vuln_key, cve_id, description, nvd_status, published_at)
 SELECT id, cve_id, description, nvd_status, (published_at AT TIME ZONE 'UTC')::date
@@ -112,7 +116,7 @@ SELECT
     COALESCE(a.product_id, 0),
     to_char((v.published_at AT TIME ZONE 'UTC')::date, 'YYYYMMDD')::integer,
     to_char(k.date_added, 'YYYYMMDD')::integer,
-    0,
+    COALESCE(pw.weakness_id, 0),
     s.severity_key,
     (SELECT source_key FROM dw.dim_source WHERE name = 'cve'),
     v.effective_score,
@@ -126,6 +130,17 @@ SELECT
 FROM public.cti_vulnerability v
 LEFT JOIN public.cti_affectedproduct a ON a.vulnerability_id = v.id
 LEFT JOIN public.cti_keventry k ON k.vulnerability_id = v.id
+-- Primary CWE of each CVE, same rule as the CVE record (Vulnerability.ordered_weaknesses):
+-- NVD > CNA > CISA ADP, weaknesses before categories, then the first CWE cited in the record.
+LEFT JOIN (
+    SELECT DISTINCT ON (vw.vulnerability_id) vw.vulnerability_id, vw.weakness_id
+    FROM public.cti_vulnerabilityweakness vw
+    JOIN public.cti_weakness w ON w.id = vw.weakness_id
+    ORDER BY vw.vulnerability_id,
+             CASE vw.provider WHEN 'NVD' THEN 0 WHEN 'CNA' THEN 1 WHEN 'CISA_ADP' THEN 2 ELSE 9 END,
+             (w.kind = 'CATEGORY'),
+             vw.id
+) pw ON pw.vulnerability_id = v.id
 JOIN dw.dim_severity s ON s.label = COALESCE(NULLIF(v.effective_severity, ''), 'NO_SCORE');
 
 -- Grain: one row per alert (rebuilt at each run). The closing date is the last change to a closed status.

@@ -28,10 +28,11 @@ GROUP BY p.vendor, p.product
 ORDER BY cves DESC, p.vendor, p.product
 LIMIT 10;
 
--- By CWE. Until the CWE connector exists, every CVE is in the "unknown" weakness.
+-- Top 10 CWEs (primary CWE of each CVE). CVEs whose record names no CWE (key 0) are left out.
 SELECT w.cwe_id, w.name, count(DISTINCT f.vuln_key) AS cves
 FROM dw.fact_vulnerability f
 JOIN dw.dim_weakness w USING (weakness_key)
+WHERE w.weakness_key <> 0
 GROUP BY w.cwe_id, w.name
 ORDER BY cves DESC, w.cwe_id
 LIMIT 10;

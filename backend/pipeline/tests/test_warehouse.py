@@ -5,12 +5,13 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase, override_settings
 
 from accounts.models import Organization
 from alerts.services import generate_alerts
-from cti.models import AffectedProduct, KEVEntry, Product, Vulnerability
+from cti.models import AffectedProduct, KEVEntry, Product, ScoreProvider, Vulnerability, VulnerabilityWeakness, Weakness
 from pipeline.models import RunStatus
 from pipeline.services import ensure_sources, run_pipeline
 from pipeline.warehouse import refresh_warehouse
@@ -91,6 +92,59 @@ class WarehouseRefreshTests(TestCase):
         self.assertEqual(joined, query("SELECT count(*) FROM dw.fact_vulnerability")[0][0])
 
 
+class WarehouseWeaknessTests(TestCase):
+    """dim_weakness is the CWE catalog; fact_vulnerability keeps the primary CWE of each CVE (spec 11.2)."""
+
+    def setUp(self):
+        ensure_sources()
+        self.cves = {}
+        for number in range(1, 5):
+            self.cves[number] = Vulnerability.objects.create(
+                cve_id=f"CVE-2026-000{number}", description="x",
+                published_at=datetime(2026, 1, number, tzinfo=timezone.utc))
+        weakness = Weakness.Kind.WEAKNESS
+        self.link(1, "CWE-20", ScoreProvider.CISA_ADP, weakness)  # cited first, but CISA ADP comes after the CNA
+        self.link(1, "CWE-79", ScoreProvider.CNA, weakness)
+        self.link(2, "CWE-16", ScoreProvider.CNA, Weakness.Kind.CATEGORY)  # a category comes after a weakness
+        self.link(2, "CWE-787", ScoreProvider.CNA, weakness)
+        self.link(2, "CWE-125", ScoreProvider.CNA, weakness)  # same provider and kind: the first cited wins
+        self.link(3, "CWE-89", ScoreProvider.CNA, weakness)
+        self.link(3, "CWE-22", ScoreProvider.NVD, weakness)  # NVD comes first
+        Weakness.objects.create(cwe_id="CWE-1000", name="Not named by any CVE", kind=weakness)
+        # CVE 4 names no CWE
+
+    def link(self, number, cwe_id, provider, kind):
+        item, _ = Weakness.objects.get_or_create(cwe_id=cwe_id, defaults={"name": f"{cwe_id} name", "kind": kind})
+        VulnerabilityWeakness.objects.create(vulnerability=self.cves[number], weakness=item, provider=provider)
+
+    def primary_cwes(self):
+        return dict(query("""
+            SELECT v.cve_id, w.cwe_id
+            FROM dw.fact_vulnerability f
+            JOIN dw.dim_vulnerability v USING (vuln_key)
+            JOIN dw.dim_weakness w USING (weakness_key)
+        """))
+
+    def test_fact_vulnerability_keeps_the_primary_cwe(self):
+        refresh_warehouse()
+        self.assertEqual(self.primary_cwes(), {
+            "CVE-2026-0001": "CWE-79", "CVE-2026-0002": "CWE-787", "CVE-2026-0003": "CWE-22",
+            "CVE-2026-0004": "unknown"})
+
+    def test_same_primary_cwe_as_the_cve_record(self):
+        refresh_warehouse()
+        record = {v.cve_id: v.ordered_weaknesses()[0][0].cwe_id
+                  for v in Vulnerability.objects.prefetch_related("weakness_links__weakness") if v.weakness_links.all()}
+        warehouse = {cve: cwe for cve, cwe in self.primary_cwes().items() if cwe != "unknown"}
+        self.assertEqual(warehouse, record)
+
+    def test_dim_weakness_is_the_whole_catalog_plus_unknown(self):
+        refresh_warehouse()
+        self.assertEqual(query("SELECT count(*) FROM dw.dim_weakness")[0][0], Weakness.objects.count() + 1)
+        self.assertEqual(query("SELECT cwe_id, name FROM dw.dim_weakness WHERE weakness_key = 0"),
+                         [("unknown", "No CWE named by the CVE record")])
+
+
 @override_settings(ALERT_DUE_DAYS=DUE_DAYS)
 class WarehouseAlertTests(TestCase):
     def setUp(self):
@@ -130,6 +184,15 @@ class WarehouseAlertTests(TestCase):
         refresh_warehouse()
         rows = query("SELECT is_watched, criticality FROM dw.dim_product WHERE product = 'fortios'")
         self.assertEqual(rows, [(True, 4)])
+
+
+class RefreshCommandTests(TestCase):
+    def test_the_command_works_before_the_first_pipeline_run(self):
+        Vulnerability.objects.create(cve_id="CVE-2024-0001", description="x",
+                                     published_at=datetime(2024, 5, 1, tzinfo=timezone.utc))
+        call_command("refresh_warehouse", stdout=open("/dev/null", "w"))  # no pipeline_source row yet
+        self.assertEqual(query("SELECT s.name FROM dw.fact_vulnerability JOIN dw.dim_source s USING (source_key)"),
+                         [("cve",)])
 
 
 @override_settings(STAGING_DIR=tempfile.mkdtemp())

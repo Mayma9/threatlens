@@ -18,9 +18,8 @@ Constellation schema of section 11.2 of the specification (FR-19): three fact ta
 
 | Table | State | Why |
 |---|---|---|
-| `dim_date`, `dim_source`, `dim_vulnerability`, `dim_product`, `dim_severity`, `dim_alert_status`, `fact_vulnerability` | Loaded | Sources exist in `public` |
+| `dim_date`, `dim_source`, `dim_vulnerability`, `dim_product`, `dim_weakness`, `dim_severity`, `dim_alert_status`, `fact_vulnerability` | Loaded | Sources exist in `public` |
 | `fact_alert` | Loaded, empty while no product is watched | Alerts come from the watchlist |
-| `dim_weakness` | Only the member `unknown` (key 0) | The CWE connector does not exist yet |
 | `dim_technique`, `bridge_cve_technique` | Empty | ATT&CK mapping is not loaded yet |
 | `dim_indicator`, `dim_malware`, `dim_threat_type`, `fact_ioc` | Empty | The ThreatFox connector does not exist yet |
 
@@ -36,7 +35,7 @@ A CVE that names no affected product gets one row with `product_key = 0` (unknow
 | `product_key` | FK → `dim_product` | Affected product; `0` when the CVE names none |
 | `published_date_key` | FK → `dim_date` (role: published) | UTC date of `published_at` |
 | `kev_date_key` | FK → `dim_date` (role: kev_added), null | Date added to CISA KEV; empty when the CVE is not in KEV |
-| `weakness_key` | FK → `dim_weakness` | Primary CWE; always `0` (unknown) until the CWE connector exists |
+| `weakness_key` | FK → `dim_weakness` | Primary CWE of the CVE (rule below); `0` when the record names no CWE. The full list stays in `cti_vulnerabilityweakness`. |
 | `severity_key` | FK → `dim_severity` | Effective severity (FR-06); `NO_SCORE` when the CVE has no CVSS score |
 | `source_key` | FK → `dim_source` | Source of the record (`cve`) |
 | `cvss_score` | float 0–10, null | Effective CVSS base score; empty when there is no score |
@@ -46,6 +45,8 @@ A CVE that names no affected product gets one row with `product_key = 0` (unknow
 | `days_to_kev` | integer, null | KEV date minus publication date. Large for the older CVEs that CISA added when the catalog started: use the median, not the average |
 | `exploit_probability` | float 0–1, null | Prediction of model M2 (Sprint 3); empty today |
 | `is_severity_predicted` | boolean | `true` when the severity comes from model M1 (Sprint 3); always `false` today |
+
+**Primary CWE** (spec 11.2: `fact_vulnerability` keeps one CWE per CVE). Among the CWEs named by the record: NVD first, then the CNA, then CISA ADP; a weakness before a category; then the first CWE cited. The CVE record page of the console uses the same rule and marks this CWE *Primary*.
 
 ### `fact_alert` — grain: one row per alert, rebuilt at each run
 
@@ -85,10 +86,10 @@ Empty until the ThreatFox connector exists. Primary key: (`indicator_key`, `firs
 | Table | Key | Columns | Loading rule |
 |---|---|---|---|
 | `dim_date` | `date_key` (yyyymmdd) | `full_date`, `day`, `week` (ISO), `month`, `quarter`, `year` | One row per day, from the earliest to the latest date used by the data (and today). One table, four roles: published, kev_added, alert_created, alert_closed (and first_seen for IOCs). |
-| `dim_source` | `source_key` | `name`, `source_type`, `url` | From `pipeline_source`. `source_type` is a label chosen for the warehouse: `cve` = vulnerability catalog, `kev` = exploitation catalog, `epss` = scoring. |
+| `dim_source` | `source_key` | `name`, `source_type`, `url` | From `pipeline_source`. `source_type` is a label chosen for the warehouse: `cve` = vulnerability catalog, `cwe` = weakness catalog, `kev` = exploitation catalog, `epss` = scoring. |
 | `dim_vulnerability` | `vuln_key` | `cve_id`, `description`, `nvd_status`, `published_at` (date) | From `cti_vulnerability` |
 | `dim_product` | `product_key` (0 = unknown) | `vendor`, `product`, `cpe_prefix`, `is_watched`, `criticality` | From `cti_product`. `is_watched` is true when an organization watches the product; `criticality` is the **highest** criticality among the organizations that watch it. Names are as published by the CNAs (risk R10): the same vendor may appear under several spellings. |
-| `dim_weakness` | `weakness_key` (0 = unknown) | `cwe_id`, `name` | Only the `unknown` member today |
+| `dim_weakness` | `weakness_key` (0 = unknown) | `cwe_id`, `name` | The whole MITRE CWE catalog from `cti_weakness` (weaknesses and categories), plus `0` = the CVE record names no CWE |
 | `dim_severity` | `severity_key` | `label`, `score_min`, `score_max` | Static: 0 `NO_SCORE` (no CVSS score), 1 `NONE` (0.0), 2 `LOW` (0.1–3.9), 3 `MEDIUM` (4.0–6.9), 4 `HIGH` (7.0–8.9), 5 `CRITICAL` (9.0–10.0) |
 | `dim_alert_status` | `status_key` | `label`, `is_open` | Static: 1 `NEW` and 2 `IN_PROGRESS` (open), 3 `FIXED`, 4 `RISK_ACCEPTED`, 5 `FALSE_POSITIVE` (closed) |
 | `dim_technique` | `technique_key` | `technique_id`, `name`, `tactic` | Empty (ATT&CK) |
@@ -115,6 +116,7 @@ Empty until the ATT&CK mapping is loaded. Primary key: (`vuln_key`, `technique_k
 | Refresh twice gives the same row counts | test `test_running_the_refresh_twice_gives_the_same_row_counts` |
 | A CVE without product is kept, with its `NO_SCORE` severity | test `test_one_row_per_cve_and_product_and_a_cve_without_product_is_kept` |
 | An open alert becomes one row of `fact_alert`; a watched product is flagged | tests in `WarehouseAlertTests` |
+| The primary CWE follows the rule and is the same as on the CVE record; `dim_weakness` is the whole catalog | tests in `WarehouseWeaknessTests` |
 | The pipeline runs the refresh as its last step; a failing refresh makes the run `PARTIAL` | tests in `WarehouseInPipelineTests` |
 
 All tests are in `backend/pipeline/tests/test_warehouse.py`.
