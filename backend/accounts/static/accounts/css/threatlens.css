@@ -180,4 +180,20 @@ a.tl-product:hover .tl-product__name { color: var(--tl-cyan); }
 .tl-sev--high { --tl-sev-color: var(--tl-amber); }
 .tl-sev--medium { --tl-sev-color: var(--tl-cyan); }
 .tl-sev--unscored { border-style: dashed; font-weight: 500; }
+a.tl-cve__id { text-decoration: none; }
+a.tl-cve__id:hover { color: var(--tl-cyan); }
+
+/* ---------- Enriched CVE record (US04) ---------- */
+.tl-description { color: #c9d6e8; max-width: 80ch; }
+.tl-label { color: var(--tl-mist); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.35rem; }
+.tl-stat { font-family: var(--tl-display); font-size: 1.75rem; font-weight: 600; color: var(--tl-frost); line-height: 1.2; }
+.tl-facts { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; font-size: 0.9rem; }
+.tl-facts dt { color: var(--tl-mist); font-weight: 400; }
+.tl-facts dd { margin: 0; color: var(--tl-frost); }
+.tl-tag { display: inline-block; padding: 0 0.45rem; border: 1px solid var(--tl-line); border-radius: 999px; color: var(--tl-mist); font-size: 0.72rem; font-weight: 600; vertical-align: middle; }
+.tl-tag--danger { border-color: rgba(255, 107, 107, 0.6); color: var(--tl-danger); }
+.tl-vector { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; word-break: break-all; }
+.tl-cwe-list li { padding: 0.65rem 0; border-bottom: 1px solid var(--tl-line); }
+.tl-cwe-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.tl-cwe__id { color: var(--tl-frost); font-weight: 600; margin-right: 0.25rem; }
 .tl-pagination { --bs-pagination-bg: rgba(16, 36, 59, 0.78); --bs-pagination-border-color: var(--tl-line); --bs-pagination-color: var(--tl-cyan); --bs-pagination-hover-bg: rgba(45, 212, 239, 0.1); --bs-pagination-hover-color: var(--tl-frost); --bs-pagination-active-bg: var(--tl-cyan); --bs-pagination-active-border-color: var(--tl-cyan); --bs-pagination-active-color: var(--tl-abyss); }

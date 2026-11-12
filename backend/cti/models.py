@@ -39,15 +39,37 @@ class Vulnerability(models.Model):
     def __str__(self) -> str:
         return self.cve_id
 
-    def effective_metric(self):
-        """CVSS score used as the effective severity (FR-06): NVD > CNA > CISA ADP, newest CVSS version first.
+    def ordered_metrics(self) -> list["CVSSMetric"]:
+        """CVSS scores in the order of FR-06: NVD > CNA > CISA ADP, newest CVSS version first.
 
-        Returns None when no score exists (the ML prediction will fill this case in Sprint 3).
         Uses the prefetched cvss_metrics when available.
         """
         order = {ScoreProvider.NVD: 0, ScoreProvider.CNA: 1, ScoreProvider.CISA_ADP: 2}
-        metrics = sorted(self.cvss_metrics.all(), key=lambda m: (order.get(m.provider, 9), -float(m.version or 0)))
+        return sorted(self.cvss_metrics.all(), key=lambda m: (order.get(m.provider, 9), -float(m.version or 0)))
+
+    def effective_metric(self):
+        """CVSS score used as the effective severity (FR-06): the first of ordered_metrics().
+
+        Returns None when no score exists (the ML prediction will fill this case in Sprint 3).
+        """
+        metrics = self.ordered_metrics()
         return metrics[0] if metrics else None
+
+    def ordered_weaknesses(self) -> list[tuple["Weakness", list[str]]]:
+        """CWEs of this CVE with the providers that name them, primary CWE first.
+
+        Primary CWE rule (same as the warehouse): NVD > CNA > CISA ADP, weaknesses before categories,
+        then the first CWE cited in the record. Uses the prefetched weakness_links when available.
+        """
+        order = {ScoreProvider.NVD: 0, ScoreProvider.CNA: 1, ScoreProvider.CISA_ADP: 2}
+        links = sorted(
+            self.weakness_links.all(),
+            key=lambda link: (order.get(link.provider, 9), link.weakness.kind == Weakness.Kind.CATEGORY, link.pk),
+        )
+        grouped: dict[int, tuple[Weakness, list[str]]] = {}
+        for link in links:
+            grouped.setdefault(link.weakness_id, (link.weakness, []))[1].append(link.get_provider_display())
+        return list(grouped.values())
 
 
 class CVSSMetric(models.Model):
