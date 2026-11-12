@@ -110,3 +110,48 @@ class KEVEntry(models.Model):
 
     def __str__(self) -> str:
         return f"KEV {self.vulnerability}"
+
+
+class Weakness(models.Model):
+    """Entry of the MITRE CWE catalog (weakness or category), e.g. CWE-79.
+
+    A CVE record can name a CWE before the catalog is loaded: the row is then created with an
+    empty name, and the cwe connector fills it at its next run.
+    """
+
+    class Kind(models.TextChoices):
+        WEAKNESS = "WEAKNESS", "Weakness"
+        CATEGORY = "CATEGORY", "Category"
+
+    cwe_id = models.CharField(max_length=16, unique=True)  # "CWE-79"
+    name = models.CharField(max_length=300, blank=True)
+    kind = models.CharField(max_length=10, choices=Kind.choices, blank=True)
+    abstraction = models.CharField(max_length=20, blank=True)  # Pillar, Class, Base, Variant, Compound
+    status = models.CharField(max_length=20, blank=True)  # Stable, Draft, Incomplete, Deprecated...
+
+    class Meta:
+        verbose_name_plural = "weaknesses"
+
+    def __str__(self) -> str:
+        return f"{self.cwe_id} {self.name}".strip()
+
+    @property
+    def number(self) -> int:
+        return int(self.cwe_id.split("-")[1])
+
+
+class VulnerabilityWeakness(models.Model):
+    """Link between a CVE and a CWE, with the organization that published it (CNA, CISA ADP, later NVD)."""
+
+    vulnerability = models.ForeignKey(Vulnerability, on_delete=models.CASCADE, related_name="weakness_links")
+    weakness = models.ForeignKey(Weakness, on_delete=models.CASCADE, related_name="vulnerability_links")
+    provider = models.CharField(max_length=10, choices=ScoreProvider.choices)
+
+    class Meta:
+        verbose_name = "vulnerability weakness"
+        constraints = [
+            models.UniqueConstraint(fields=["vulnerability", "weakness", "provider"], name="uniq_vulnerability_weakness"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.vulnerability} {self.weakness.cwe_id} ({self.provider})"

@@ -119,7 +119,8 @@ All three belong to the organization *Demo Bank*. The command can be run again s
 ## ETL pipeline
 
 ```bash
-docker compose run --rm etl python manage.py run_pipeline --source cve   # CVE List V5 (first load: 20-40 min)
+docker compose run --rm etl python manage.py run_pipeline --source cwe   # MITRE CWE catalog (~1 min)
+docker compose run --rm etl python manage.py run_pipeline --source cve   # CVE List V5 + CVE-to-CWE links (first load: 20-40 min)
 docker compose run --rm etl python manage.py run_pipeline --source kev   # CISA KEV (needs the CVEs first)
 docker compose run --rm etl python manage.py run_pipeline --source epss  # FIRST EPSS scores (needs the CVEs first)
 docker compose run --rm etl                                              # every active source, in order
@@ -127,7 +128,7 @@ docker compose run --rm etl                                              # every
 
 | Option | Effect |
 |---|---|
-| `--source NAME` | run one source (repeatable): `cve`, `kev`, `epss` |
+| `--source NAME` | run one source (repeatable): `cwe`, `cve`, `kev`, `epss` |
 | `--file PATH` | load a local snapshot instead of downloading (one source only) |
 | `--full` | reload every record, not only those updated since the last load |
 | `--triggered-by USERNAME` | record the administrator who started the run |

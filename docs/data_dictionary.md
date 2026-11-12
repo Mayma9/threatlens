@@ -58,6 +58,23 @@ Unique: (`vulnerability`, `provider`, `version`). CISA ADP SSVC exploitation fie
 | `required_action` | text | `requiredAction` | Action required by CISA |
 | `ransomware_use` | boolean | `knownRansomwareCampaignUse` | `true` when the value is `Known` |
 
+### `cti_weakness` — MITRE CWE catalog (weaknesses and categories)
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `cwe_id` | varchar(16), unique | `ID` | `CWE-` + number, e.g. `CWE-79` |
+| `name` | varchar(300) | `Name` | Empty while a CWE named by a CVE is not yet in the loaded catalog |
+| `kind` | varchar(10) | element | `WEAKNESS` or `CATEGORY` (views are not loaded) |
+| `abstraction` | varchar(20) | `Abstraction` | `Pillar`, `Class`, `Base`, `Variant`, `Compound` (weaknesses only) |
+| `status` | varchar(20) | `Status` | `Stable`, `Draft`, `Incomplete`, `Deprecated`, `Obsolete`… (deprecated entries are kept: old CVEs still name them) |
+
+### `cti_vulnerabilityweakness` — vulnerability × CWE
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `vulnerability_id`, `weakness_id` | FK | `problemTypes[].descriptions[].cweId` | CWE named by the CVE record |
+| `provider` | varchar(10) | container | `CNA` or `CISA_ADP` (`NVD` from the NVD connector); unique with the two FKs |
+
 ## Watchlist (`watchlist` app)
 
 ### `watchlist_watchlistitem` — a product watched by an organization (US07, FR-07)
@@ -123,7 +140,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 
 | Column | Description |
 |---|---|
-| `name` | Connector key (`cve`, `kev`, `epss`), unique |
+| `name` | Connector key (`cwe`, `cve`, `kev`, `epss`), unique |
 | `label`, `url` | Display name and reference URL |
 | `frequency` | Update frequency (default `daily`) |
 | `is_active` | Disabled sources are skipped by `run_pipeline` (FR-15) |
@@ -157,6 +174,10 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 | CVE List V5 | every CVSS base score in 0–10 | otherwise rejected |
 | CVE List V5 | state = `PUBLISHED` | otherwise skipped (counted) |
 | CVE List V5 | same CVE twice in a file | last one kept (counted) |
+| CVE List V5 | `cweId` matches `CWE-NNN` | otherwise not linked (free-text problem types ignored) |
+| CWE | identifier is a number | otherwise rejected |
+| CWE | name present | otherwise rejected |
+| CWE | CWE once in the catalog | duplicates rejected |
 | KEV | CVE already in `cti_vulnerability` | otherwise rejected |
 | KEV | `dateAdded` is a valid date | otherwise rejected |
 | KEV | CVE once in the catalog | duplicates rejected |
