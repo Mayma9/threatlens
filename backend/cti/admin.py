@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AffectedProduct, CVSSMetric, KEVEntry, Product, Vulnerability
+from .models import AffectedProduct, CVSSMetric, KEVEntry, Product, Vulnerability, VulnerabilityWeakness, Weakness
 
 
 class CVSSMetricInline(admin.TabularInline):
@@ -14,12 +14,18 @@ class AffectedProductInline(admin.TabularInline):
     autocomplete_fields = ["product"]
 
 
+class VulnerabilityWeaknessInline(admin.TabularInline):
+    model = VulnerabilityWeakness
+    extra = 0
+    autocomplete_fields = ["weakness"]
+
+
 @admin.register(Vulnerability)
 class VulnerabilityAdmin(admin.ModelAdmin):
     list_display = ("cve_id", "published_at", "source_updated_at", "nvd_status", "epss_score")
     search_fields = ("cve_id",)
     date_hierarchy = "published_at"
-    inlines = [CVSSMetricInline, AffectedProductInline]
+    inlines = [CVSSMetricInline, AffectedProductInline, VulnerabilityWeaknessInline]
     show_full_result_count = False  # avoids a COUNT(*) on ~300,000 rows at every page
 
 
@@ -45,3 +51,10 @@ class CVSSMetricAdmin(admin.ModelAdmin):
     search_fields = ("vulnerability__cve_id",)
     raw_id_fields = ("vulnerability",)
     show_full_result_count = False
+
+
+@admin.register(Weakness)
+class WeaknessAdmin(admin.ModelAdmin):
+    list_display = ("cwe_id", "name", "kind", "abstraction", "status")
+    list_filter = ("kind", "abstraction", "status")
+    search_fields = ("cwe_id", "name")

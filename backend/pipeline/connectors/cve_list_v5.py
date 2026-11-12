@@ -4,7 +4,8 @@ Source: the daily "all CVEs at midnight" bulk file of the latest GitHub release
 (a zip that contains cves.zip, which contains one JSON file per CVE record).
 
 Per record we keep: CVE id, English description, publication and update dates,
-CVSS scores published by the CNA and by CISA ADP (every version), affected products.
+CVSS scores published by the CNA and by CISA ADP (every version), affected products,
+and the CWE identifiers of their problem types (links to the CWE catalog).
 REJECTED records are skipped. CISA ADP SSVC fields are NOT loaded (M2 label leakage).
 
 Incremental: records whose dateUpdated is not newer than the latest one already
@@ -24,12 +25,22 @@ import requests
 from django.db import transaction
 from django.db.models import Max
 
-from cti.models import AffectedProduct, CVSSMetric, Product, ScoreProvider, Severity, Vulnerability
+from cti.models import (
+    AffectedProduct,
+    CVSSMetric,
+    Product,
+    ScoreProvider,
+    Severity,
+    Vulnerability,
+    VulnerabilityWeakness,
+    Weakness,
+)
 
 from .base import HTTP_TIMEOUT, BaseConnector, Reject, parse_datetime
 
 RELEASES_API = "https://api.github.com/repos/CVEProject/cvelistV5/releases/latest"
 CVE_ID = re.compile(r"^CVE-\d{4}-\d{4,}$")
+CWE_ID = re.compile(r"^CWE-\d+$")
 CVSS_KEYS = {"cvssV2_0": "2.0", "cvssV3_0": "3.0", "cvssV3_1": "3.1", "cvssV4_0": "4.0"}
 IGNORED_NAMES = {"", "n/a", "na", "unknown", "unspecified", "-"}
 
@@ -70,6 +81,17 @@ def extract_metrics(metrics: list, provider: str) -> list[dict]:
     return found
 
 
+def extract_weaknesses(problem_types: list, provider: str) -> list[tuple[str, str]]:
+    """(provider, "CWE-79") for every CWE identifier of the problem types; free-text types are ignored."""
+    found = []
+    for problem in problem_types or []:
+        for description in problem.get("descriptions", []) or []:
+            cwe_id = str(description.get("cweId") or "").strip().upper()
+            if CWE_ID.match(cwe_id) and (provider, cwe_id) not in found:
+                found.append((provider, cwe_id))
+    return found
+
+
 def clean_name(value) -> str:
     return " ".join(str(value or "").split()).lower()[:200]
 
@@ -85,9 +107,11 @@ def parse_record(doc: dict) -> dict | None:
         "",
     )
     metrics = extract_metrics(cna.get("metrics"), ScoreProvider.CNA)
+    weaknesses = extract_weaknesses(cna.get("problemTypes"), ScoreProvider.CNA)
     for adp in doc.get("containers", {}).get("adp", []) or []:
         if adp.get("providerMetadata", {}).get("shortName") == "CISA-ADP":
             metrics += extract_metrics(adp.get("metrics"), ScoreProvider.CISA_ADP)
+            weaknesses += extract_weaknesses(adp.get("problemTypes"), ScoreProvider.CISA_ADP)
 
     products: dict[tuple[str, str], list[str]] = {}
     for item in cna.get("affected", []) or []:
@@ -108,6 +132,7 @@ def parse_record(doc: dict) -> dict | None:
         "source_updated_at": parse_datetime(meta.get("dateUpdated")),
         "metrics": metrics,
         "products": products,
+        "weaknesses": weaknesses,
     }
 
 
@@ -238,6 +263,22 @@ class CveListV5Connector(BaseConnector):
                 for key, versions in r["products"].items()
             ]
         )
+        # CWE links from this source are replaced, NVD links are left untouched.
+        # A CWE missing from the catalog is created with an empty name (filled by the cwe connector).
+        cwe_ids = {cwe_id for r in records for _, cwe_id in r["weaknesses"]}
+        Weakness.objects.bulk_create([Weakness(cwe_id=c) for c in cwe_ids], ignore_conflicts=True)
+        weakness_ids = dict(Weakness.objects.filter(cwe_id__in=cwe_ids).values_list("cwe_id", "id"))
+        VulnerabilityWeakness.objects.filter(
+            vulnerability_id__in=ids.values(), provider__in=[ScoreProvider.CNA, ScoreProvider.CISA_ADP]
+        ).delete()
+        links = [
+            VulnerabilityWeakness(vulnerability_id=ids[r["cve_id"]], weakness_id=weakness_ids[cwe_id], provider=provider)
+            for r in records
+            for provider, cwe_id in r["weaknesses"]
+        ]
+        VulnerabilityWeakness.objects.bulk_create(links)
+
         self.counters["cvss_metrics_loaded"] += len(metrics)
+        self.counters["cwe_links_loaded"] += len(links)
         self.counters["affected_products_loaded"] += sum(len(r["products"]) for r in records)
         return len(records)
