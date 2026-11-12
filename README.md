@@ -151,7 +151,14 @@ Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, ex
 docker compose run --rm etl python manage.py generate_alerts --since 2026-10-01
 ```
 
-Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md).
+**Warehouse (UC21).** The last step of each run rebuilds the `dw` schema by SQL (constellation schema, read by Power BI). By hand, and the FR-20 queries:
+
+```bash
+docker compose exec -T web python manage.py refresh_warehouse
+docker compose exec -T db psql -U threatlens -d threatlens < warehouse/sql/olap/02_distribution.sql
+```
+
+Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md) and [warehouse dictionary](docs/data_warehouse_dictionary.md).
 
 ### Daily run (Windows Task Scheduler)
 

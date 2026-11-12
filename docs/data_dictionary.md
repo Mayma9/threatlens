@@ -1,6 +1,6 @@
 # Data dictionary — operational schema
 
-Tables created by Django migrations in the `public` schema. The warehouse (`dw` schema) is documented separately (Sprint 2).
+Tables created by Django migrations in the `public` schema. The warehouse (`dw` schema) is documented in [data_warehouse_dictionary.md](data_warehouse_dictionary.md).
 
 ## CTI reference data (`cti` app)
 

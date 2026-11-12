@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS dw.dim_product (
 );
 
 CREATE TABLE IF NOT EXISTS dw.dim_weakness (
-    weakness_key bigint       PRIMARY KEY,    -- 0 = unknown CWE (until the CWE connector exists)
+    weakness_key bigint       PRIMARY KEY,    -- id of cti_weakness; 0 = the CVE record names no CWE
     cwe_id       varchar(32)  NOT NULL UNIQUE,
     name         varchar(300) NOT NULL DEFAULT ''
 );
