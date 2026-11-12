@@ -43,7 +43,7 @@
         {% for vulnerability in page.object_list %}
         <tr>
           <td class="tl-cve">
-            <span class="tl-cve__id">{{ vulnerability.cve_id }}</span>
+            <a class="tl-cve__id" href="{% url 'cti:detail' vulnerability.cve_id %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">{{ vulnerability.cve_id }}</a>
             {% if vulnerability.kev_entry %}<span class="tl-kev" title="In the CISA catalog of exploited vulnerabilities since {{ vulnerability.kev_entry.date_added|date:'d M Y' }}">Exploited</span>{% endif %}
             <p class="tl-cve__text mb-0">{{ vulnerability.description|truncatechars:170 }}</p>
           </td>

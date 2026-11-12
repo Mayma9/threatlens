@@ -116,6 +116,16 @@ All three belong to the organization *Demo Bank*. The command can be run again s
 | Stop | `docker compose down` |
 | Reset the database (deletes all data) | `docker compose down -v` |
 
+### Triage console pages
+
+Open http://localhost:8000 and log in as `analyst1` or `ciso1`.
+
+| Page | URL | User story |
+|---|---|---|
+| Vulnerability search | `/vulnerabilities/` | US03 |
+| Enriched CVE record: CVSS scores by provider, effective severity, EPSS, KEV, CWE, affected products | `/vulnerabilities/CVE-2024-3400/` (or a click on a search result) | US04 |
+| Watchlist and product aliases | `/watchlist/` | US07 |
+
 ## ETL pipeline
 
 ```bash

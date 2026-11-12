@@ -1,0 +1,143 @@
+{% extends "accounts/base.html" %}
+{% block title %}{{ vulnerability.cve_id }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb tl-breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'cti:search' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">Vulnerabilities</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ vulnerability.cve_id }}</li>
+  </ol>
+</nav>
+
+<h1 class="tl-page-title">{{ vulnerability.cve_id }}{% if kev %} <span class="tl-kev align-middle">Exploited</span>{% endif %}</h1>
+<p class="tl-muted mb-0">
+  {% if vulnerability.effective_severity %}
+  <span class="tl-sev tl-sev--{{ vulnerability.effective_severity|lower }}">{{ vulnerability.get_effective_severity_display }}{% if vulnerability.effective_score is not None %} {{ vulnerability.effective_score|floatformat:1 }}{% endif %}</span>
+  {% if effective %}<span class="ms-1">effective severity, from the {{ effective.get_provider_display }} CVSS {{ effective.version }} score</span>{% endif %}
+  {% else %}
+  <span class="tl-sev tl-sev--unscored">No score yet</span>
+  {% endif %}
+  <span class="ms-3">Published {{ vulnerability.published_at|date:"d M Y"|default:"date unknown" }}</span>
+  {% if vulnerability.source_updated_at %}<span class="ms-3">Updated {{ vulnerability.source_updated_at|date:"d M Y" }}</span>{% endif %}
+  {% if vulnerability.nvd_status %}<span class="ms-3">NVD status: {{ vulnerability.nvd_status }}</span>{% endif %}
+</p>
+
+<div class="row g-3 mt-2">
+  <div class="col-lg-8">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-2">Description</h2>
+      <p class="mb-0 tl-description">{{ vulnerability.description|linebreaksbr }}</p>
+    </section>
+  </div>
+
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100" aria-labelledby="exploitation-title">
+      <h2 class="h6 mb-3" id="exploitation-title">Exploitation</h2>
+
+      <h3 class="tl-label">EPSS</h3>
+      {% if epss_percent is not None %}
+      <p class="tl-stat mb-0">{% if epss_percent < 0.01 %}&lt; 0.01{% else %}{{ epss_percent|floatformat:2 }}{% endif %} %</p>
+      <p class="small tl-muted">Probability of exploitation in the next 30 days.
+        {% if epss_percentile is not None %}Higher than {{ epss_percentile|floatformat:1 }} % of scored CVEs.{% endif %}</p>
+      {% else %}
+      <p class="small tl-muted">No EPSS score: this CVE was not in the latest EPSS file.</p>
+      {% endif %}
+
+      <h3 class="tl-label mt-3">CISA KEV catalog</h3>
+      {% if kev %}
+      <dl class="tl-facts mb-0">
+        <dt>Date added</dt><dd>{{ kev.date_added|date:"d M Y" }}</dd>
+        <dt>Due date</dt><dd>{{ kev.due_date|date:"d M Y"|default:"Not set" }}</dd>
+        <dt>Ransomware use</dt><dd>{% if kev.ransomware_use %}<span class="tl-tag tl-tag--danger">Known</span>{% else %}Not known{% endif %}</dd>
+      </dl>
+      {% else %}
+      <p class="small tl-muted mb-0">Not in the catalog of actively exploited vulnerabilities.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="tl-panel overflow-hidden h-100">
+      <h2 class="h6 px-4 pt-4 mb-1">CVSS scores</h2>
+      <p class="small tl-muted px-4">The effective severity uses the first score: NVD, then the CNA, then CISA ADP, newest CVSS version first.</p>
+      {% if metrics %}
+      <div class="table-responsive">
+        <table class="table tl-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Provider</th>
+              <th scope="col">CVSS</th>
+              <th scope="col">Score</th>
+              <th scope="col" class="d-none d-md-table-cell">Vector</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for metric in metrics %}
+            <tr>
+              <td class="text-nowrap">{{ metric.get_provider_display }}{% if forloop.first %} <span class="tl-tag">Effective</span>{% endif %}</td>
+              <td>{{ metric.version }}</td>
+              <td class="text-nowrap"><span class="tl-sev tl-sev--{{ metric.severity|lower }}">{{ metric.get_severity_display }} {{ metric.base_score|floatformat:1 }}</span></td>
+              <td class="d-none d-md-table-cell small tl-muted tl-vector">{{ metric.vector|default:"Not published" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="px-4 pb-4 mb-0 tl-muted">No CVSS score published yet by NVD, the CNA or CISA ADP.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-1">Weaknesses (CWE)</h2>
+      {% if weaknesses %}
+      <ul class="list-unstyled tl-cwe-list mb-0">
+        {% for weakness, providers in weaknesses %}
+        <li>
+          <div>
+            <span class="tl-cwe__id">{{ weakness.cwe_id }}</span>
+            {% if forloop.first and weaknesses|length > 1 %}<span class="tl-tag">Primary</span>{% endif %}
+            {% if weakness.kind == "CATEGORY" %}<span class="tl-tag">Category</span>{% endif %}
+          </div>
+          <div class="small">{{ weakness.name|default:"Name not in the loaded CWE catalog yet" }}</div>
+          <div class="small tl-muted">Named by {{ providers|join:", " }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small tl-muted mb-0 mt-2">No CWE named by the CNA or CISA ADP.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="col-12">
+    <section class="tl-panel overflow-hidden">
+      <h2 class="h6 px-4 pt-4 mb-3">Affected products</h2>
+      {% if affected %}
+      <div class="table-responsive">
+        <table class="table tl-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Affected versions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in affected %}
+            <tr>
+              <td><span class="tl-product"><span class="tl-product__vendor">{{ item.product.vendor }}</span>
+                <span class="tl-product__name">{{ item.product.name }}</span></span></td>
+              <td class="small tl-muted" title="{{ item.versions }}">{{ item.versions|default:"Not listed"|truncatechars:160 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="px-4 pb-4 mb-0 tl-muted">The CNA lists no affected product.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
