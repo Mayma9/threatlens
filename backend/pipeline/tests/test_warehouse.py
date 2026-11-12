@@ -8,12 +8,17 @@ from unittest.mock import patch
 from django.db import connection
 from django.test import TestCase, override_settings
 
+from accounts.models import Organization
+from alerts.services import generate_alerts
 from cti.models import AffectedProduct, KEVEntry, Product, Vulnerability
 from pipeline.models import RunStatus
 from pipeline.services import ensure_sources, run_pipeline
 from pipeline.warehouse import refresh_warehouse
+from watchlist.models import WatchlistItem
 
 from .factories import write_kev_json
+
+DUE_DAYS = {"CRITICAL": 7, "HIGH": 30, "MEDIUM": 90, "LOW": 180, "UNKNOWN": 30}
 
 
 def query(sql):
@@ -84,6 +89,47 @@ class WarehouseRefreshTests(TestCase):
             JOIN dw.dim_date d ON d.date_key = f.published_date_key
         """)[0][0]
         self.assertEqual(joined, query("SELECT count(*) FROM dw.fact_vulnerability")[0][0])
+
+
+@override_settings(ALERT_DUE_DAYS=DUE_DAYS)
+class WarehouseAlertTests(TestCase):
+    def setUp(self):
+        ensure_sources()
+        self.org = Organization.objects.create(name="Demo Bank")
+        self.product = Product.objects.create(vendor="fortinet", name="fortios")
+        WatchlistItem.objects.create(organization=self.org, product=self.product, criticality=4)
+        vulnerability = Vulnerability.objects.create(
+            cve_id="CVE-2026-0001",
+            description="exploited fortios flaw",
+            published_at=datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc),
+            source_updated_at=datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc),
+            effective_severity="CRITICAL",
+            effective_score=9.8,
+        )
+        AffectedProduct.objects.create(vulnerability=vulnerability, product=self.product)
+        KEVEntry.objects.create(
+            vulnerability=vulnerability, date_added=date(2026, 11, 5), required_action="patch", ransomware_use=False
+        )
+        generate_alerts(Vulnerability.objects.all())
+
+    def test_an_open_alert_becomes_one_row_of_fact_alert(self):
+        counts = refresh_warehouse()
+        self.assertEqual(counts["fact_alert"], 1)
+        rows = query("""
+            SELECT v.cve_id, p.product, s.label, st.label, st.is_open,
+                   f.criticality, f.is_kev, f.is_overdue, f.days_open, f.closed_date_key
+            FROM dw.fact_alert f
+            JOIN dw.dim_vulnerability v USING (vuln_key)
+            JOIN dw.dim_product p USING (product_key)
+            JOIN dw.dim_severity s USING (severity_key)
+            JOIN dw.dim_alert_status st USING (status_key)
+        """)
+        self.assertEqual(rows, [("CVE-2026-0001", "fortios", "CRITICAL", "NEW", True, 4, True, False, 0, None)])
+
+    def test_a_watched_product_is_flagged_with_its_criticality(self):
+        refresh_warehouse()
+        rows = query("SELECT is_watched, criticality FROM dw.dim_product WHERE product = 'fortios'")
+        self.assertEqual(rows, [(True, 4)])
 
 
 @override_settings(STAGING_DIR=tempfile.mkdtemp())
