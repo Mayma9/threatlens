@@ -13,6 +13,7 @@ from cti.services import refresh_effective_severity
 
 from .connectors import REGISTRY
 from .models import IngestionTask, PipelineRun, RunStatus, Source
+from .warehouse import refresh_warehouse
 
 
 def ensure_sources() -> None:
@@ -55,18 +56,20 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
 
     statuses = set(run.tasks.values_list("status", flat=True))
     alerts_ok = True
+    warehouse_ok = True
     if RunStatus.SUCCESS in statuses:
         changed = refresh_effective_severity()  # FR-06, before the alerts that use it
         if stdout:
             stdout.write(f"effective severity: {changed} CVEs updated")
         alerts_ok = _generate_alerts(run, watermark, stdout)
+        warehouse_ok = _refresh_warehouse(stdout)  # UC21: last step, after the data and the alerts
     if not statuses or statuses == {RunStatus.SUCCESS}:
         run.status = RunStatus.SUCCESS
     elif statuses == {RunStatus.FAILED}:
         run.status = RunStatus.FAILED
     else:
         run.status = RunStatus.PARTIAL
-    if run.status == RunStatus.SUCCESS and not alerts_ok:
+    if run.status == RunStatus.SUCCESS and not (alerts_ok and warehouse_ok):
         run.status = RunStatus.PARTIAL
     run.ended_at = timezone.now()
     run.save()
@@ -90,4 +93,17 @@ def _generate_alerts(run, watermark, stdout=None) -> bool:
             f"alerts: {result.alerts_created} created for {result.cves_checked} new or updated CVEs, "
             f"{len(result.unmatched_names)} unmatched names to review"
         )
+    return True
+
+
+def _refresh_warehouse(stdout=None) -> bool:
+    """Warehouse step (UC21, FR-16), last: rebuild the dw schema by SQL. A failure makes the run PARTIAL."""
+    try:
+        counts = refresh_warehouse()
+    except Exception as exc:  # noqa: BLE001 - the loaded data stays valid, the dw keeps its previous content
+        if stdout:
+            stdout.write(f"warehouse: FAILED - {type(exc).__name__}: {exc}")
+        return False
+    if stdout:
+        stdout.write("warehouse: refreshed - " + ", ".join(f"{table} {count}" for table, count in counts.items()))
     return True
