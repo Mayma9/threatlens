@@ -1,0 +1,100 @@
+{% extends "accounts/base.html" %}
+{% load humanize %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<h1 class="tl-page-title">Alerts</h1>
+<p class="tl-muted">Vulnerabilities that affect the watchlist of {{ organization }}, highest priority first. The score combines severity, exploitation probability, KEV and product criticality.</p>
+
+<section class="tl-panel p-4 mt-3">
+  <form method="get" novalidate class="row g-3" role="search">
+    {% for field in form %}
+    <div class="col-sm-6 col-lg-3">
+      <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+      {{ field }}
+    </div>
+    {% endfor %}
+    <div class="col-12 d-flex gap-2">
+      <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+      <a class="btn btn-outline-light" href="{% url 'alerts:list' %}">Clear filters</a>
+    </div>
+  </form>
+</section>
+
+<div class="d-flex justify-content-between align-items-baseline mt-4 mb-2">
+  <h2 class="h6 mb-0">{{ page.paginator.count|intcomma }} {% if showing_open %}open {% endif %}alert{{ page.paginator.count|pluralize }}</h2>
+  {% if page.paginator.num_pages > 1 %}<span class="small tl-muted">Page {{ page.number }} of {{ page.paginator.num_pages|intcomma }}</span>{% endif %}
+</div>
+
+<section class="tl-panel overflow-hidden">
+  {% if page.object_list %}
+  <div class="table-responsive">
+    <table class="table tl-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Priority</th>
+          <th scope="col">CVE</th>
+          <th scope="col" class="d-none d-md-table-cell">Product</th>
+          <th scope="col">Severity</th>
+          <th scope="col" class="d-none d-lg-table-cell">EPSS</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="d-none d-lg-table-cell">Assignee</th>
+          <th scope="col" class="text-nowrap">Due</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alert in page.object_list %}
+        {% with vulnerability=alert.vulnerability %}
+        <tr>
+          <td>
+            <span class="tl-priority" title="Priority score out of 100">
+              <span class="tl-priority__value">{{ alert.priority_score|floatformat:0 }}</span>
+              <span class="tl-priority__bar" aria-hidden="true"><span style="width: {{ alert.priority_score|floatformat:0 }}%"></span></span>
+            </span>
+          </td>
+          <td class="text-nowrap">
+            <a class="tl-cve__id" href="{% url 'alerts:detail' alert.pk %}">{{ vulnerability.cve_id }}</a>
+            {% if vulnerability.kev_entry %}<span class="tl-kev ms-1">KEV</span>{% endif %}
+          </td>
+          <td class="d-none d-md-table-cell"><span class="tl-product"><span class="tl-product__vendor">{{ alert.watchlist_item.product.vendor }}</span>
+            <span class="tl-product__name">{{ alert.watchlist_item.product.name }}</span></span></td>
+          <td class="text-nowrap">
+            {% if vulnerability.effective_severity %}
+            <span class="tl-sev tl-sev--{{ vulnerability.effective_severity|lower }}">{{ vulnerability.get_effective_severity_display }}{% if vulnerability.effective_score is not None %} {{ vulnerability.effective_score|floatformat:1 }}{% endif %}</span>
+            {% else %}<span class="tl-sev tl-sev--unscored">No score yet</span>{% endif %}
+          </td>
+          <td class="d-none d-lg-table-cell small">{% if vulnerability.epss_score is not None %}{{ vulnerability.epss_score|floatformat:4 }}{% else %}<span class="tl-muted">—</span>{% endif %}</td>
+          <td><span class="tl-status tl-status--{{ alert.status|lower }}">{{ alert.get_status_display }}</span></td>
+          <td class="d-none d-lg-table-cell small">{{ alert.assignee.get_username|default:"—" }}</td>
+          <td class="text-nowrap small{% if alert.is_open and alert.due_date and alert.due_date < today %} tl-overdue{% endif %}">
+            {{ alert.due_date|date:"d M Y"|default:"—" }}{% if alert.is_open and alert.due_date and alert.due_date < today %} <span class="visually-hidden">(overdue)</span><i class="bi bi-exclamation-circle" title="Overdue"></i>{% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="p-4 mb-0 tl-muted">
+    {% if showing_open %}No open alert. Alerts appear when a pipeline run loads a CVE that affects a product of the <a href="{% url 'watchlist:list' %}">watchlist</a>.
+    {% else %}No alert matches these filters.{% endif %}
+  </p>
+  {% endif %}
+</section>
+
+{% if page.paginator.num_pages > 1 %}
+<nav aria-label="Result pages" class="mt-3">
+  <ul class="pagination tl-pagination justify-content-center">
+    {% if page.has_previous %}
+    <li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page=1">First</a></li>
+    <li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page.previous_page_number }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item active" aria-current="page"><span class="page-link">{{ page.number }}</span></li>
+    {% if page.has_next %}
+    <li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page.next_page_number }}">Next</a></li>
+    <li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page.paginator.num_pages }}">Last</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

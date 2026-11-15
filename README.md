@@ -125,6 +125,7 @@ Open http://localhost:8000 and log in as `analyst1` or `ciso1`.
 | Vulnerability search | `/vulnerabilities/` | US03 |
 | Enriched CVE record: CVSS scores by provider, effective severity, EPSS, KEV, CWE, affected products | `/vulnerabilities/CVE-2024-3400/` (or a click on a search result) | US04 |
 | Watchlist and product aliases | `/watchlist/` | US07 |
+| Prioritized alerts: open alerts sorted by priority score, filters, status / assignee / comment, history, score explained | `/alerts/` | US11 |
 
 ## ETL pipeline
 
@@ -156,6 +157,17 @@ Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, ex
 ```bash
 docker compose run --rm etl python manage.py generate_alerts --since 2026-10-01
 ```
+
+**Priority score (US11, FR-10).** Each open alert gets a score from 0 to 100, recomputed at the end of each run (EPSS, KEV and severity change) and when the criticality of a product changes:
+
+| Factor | Value between 0 and 1 | Weight |
+|---|---|---|
+| Effective severity | effective CVSS score / 10; **0.5** when the CVE has no CVSS score yet | 35 % |
+| Exploitation probability | EPSS score | 25 % |
+| CISA KEV | 1 when the CVE is in the KEV catalog | 25 % |
+| Product criticality | (criticality − 1) / 3, criticality 1 to 4 | 15 % |
+
+The weights are `PRIORITY_WEIGHTS` and `PRIORITY_UNSCORED_SEVERITY` in `settings.py` (team decision, Sprint 3). After changing them: `docker compose exec -T web python manage.py refresh_priorities`. A closed alert keeps the score it had when it was closed. The alert page shows the points of each factor.
 
 **Warehouse (UC21).** The last step of each run rebuilds the `dw` schema by SQL (constellation schema, read by Power BI). By hand, and the FR-20 queries:
 

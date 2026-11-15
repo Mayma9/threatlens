@@ -1,0 +1,99 @@
+{% extends "accounts/base.html" %}
+{% block title %}{{ alert.vulnerability.cve_id }} on {{ alert.watchlist_item.product }}{% endblock %}
+{% block content %}
+{% with vulnerability=alert.vulnerability product=alert.watchlist_item.product %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb tl-breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'alerts:list' %}">Alerts</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ vulnerability.cve_id }}</li>
+  </ol>
+</nav>
+
+<h1 class="tl-page-title">{{ vulnerability.cve_id }}{% if vulnerability.kev_entry %} <span class="tl-kev align-middle">Exploited</span>{% endif %}</h1>
+<p class="tl-muted mb-0">
+  <span class="tl-product"><span class="tl-product__vendor">{{ product.vendor }}</span>
+    <span class="tl-product__name">{{ product.name }}</span></span>
+  <span class="tl-crit tl-crit--{{ alert.watchlist_item.criticality }} ms-2">{{ alert.watchlist_item.get_criticality_display }}</span>
+  <span class="tl-status tl-status--{{ alert.status|lower }} ms-2">{{ alert.get_status_display }}</span>
+  <a class="ms-3" href="{% url 'cti:detail' vulnerability.cve_id %}">Open the CVE record</a>
+</p>
+
+<div class="row g-3 mt-2">
+  <div class="col-lg-7">
+    <section class="tl-panel p-4 h-100" aria-labelledby="priority-title">
+      <div class="d-flex justify-content-between align-items-baseline">
+        <h2 class="h6 mb-1" id="priority-title">Why this priority</h2>
+        <span class="tl-stat">{{ alert.priority_score|floatformat:0 }}<span class="small tl-muted"> / 100</span></span>
+      </div>
+      {% if not alert.is_open %}<p class="small tl-muted mb-2">Score frozen when the alert was closed.</p>{% endif %}
+      <div class="table-responsive">
+        <table class="table tl-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Factor</th>
+              <th scope="col">Value</th>
+              <th scope="col" class="text-end">Weight</th>
+              <th scope="col" class="text-end">Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for factor in factors %}
+            <tr>
+              <td>{{ factor.label }}</td>
+              <td class="small">{{ factor.shown }}</td>
+              <td class="text-end small">{% widthratio factor.weight 1 100 %} %</td>
+              <td class="text-end">{{ factor.points|floatformat:1 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <dl class="tl-facts mt-3 mb-0">
+        <dt>Created</dt><dd>{{ alert.created_at|date:"d M Y H:i" }}</dd>
+        <dt>Due date</dt>
+        <dd{% if alert.is_open and alert.due_date and alert.due_date < today %} class="tl-overdue"{% endif %}>{{ alert.due_date|date:"d M Y"|default:"Not set" }}{% if alert.is_open and alert.due_date and alert.due_date < today %} (overdue){% endif %}</dd>
+        <dt>Assignee</dt><dd>{{ alert.assignee.get_username|default:"Nobody" }}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <div class="col-lg-5">
+    <section class="tl-panel p-4 h-100" aria-labelledby="update-title">
+      <h2 class="h6 mb-3" id="update-title">Update the alert</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.name == "comment" %} <span class="tl-muted small">(saved with a status change)</span>{% endif %}</label>
+          {{ field }}
+          {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Save</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="col-12">
+    <section class="tl-panel p-4" aria-labelledby="history-title">
+      <h2 class="h6 mb-3" id="history-title">History</h2>
+      <ol class="list-unstyled tl-history mb-0">
+        {% for change in history %}
+        <li>
+          <div>
+            {% if change.old_status %}
+            <span class="tl-status tl-status--{{ change.old_status|lower }}">{{ change.get_old_status_display }}</span>
+            <i class="bi bi-arrow-right mx-1" aria-label="to"></i>
+            {% else %}<span class="small tl-muted me-1">Created as</span>{% endif %}
+            <span class="tl-status tl-status--{{ change.new_status|lower }}">{{ change.get_new_status_display }}</span>
+          </div>
+          <div class="small tl-muted">{{ change.changed_at|date:"d M Y H:i" }} · {{ change.changed_by.get_username|default:"ThreatLens (pipeline)" }}</div>
+          {% if change.comment %}<p class="small mb-0 mt-1">{{ change.comment|linebreaksbr }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

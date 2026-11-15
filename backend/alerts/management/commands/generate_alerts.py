@@ -12,6 +12,7 @@ from datetime import date, datetime, time
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
+from alerts.priority import refresh_priority_scores
 from alerts.services import generate_alerts
 from cti.models import Vulnerability
 
@@ -29,8 +30,10 @@ class Command(BaseCommand):
             raise CommandError("--since expects a date such as 2026-10-01") from exc
         start = timezone.make_aware(datetime.combine(day, time.min))
         result = generate_alerts(Vulnerability.objects.filter(source_updated_at__gte=start))
+        scored = refresh_priority_scores()
         self.stdout.write(self.style.SUCCESS(
-            f"{result.alerts_created} alerts created for {result.cves_checked} CVEs updated since {day}"
+            f"{result.alerts_created} alerts created for {result.cves_checked} CVEs updated since {day}, "
+            f"priority of {scored} open alerts refreshed"
         ))
         for name in result.unmatched_names:
             self.stdout.write(f"  unmatched name: {name}")

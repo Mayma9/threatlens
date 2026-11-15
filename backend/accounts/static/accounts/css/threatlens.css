@@ -197,3 +197,21 @@ a.tl-cve__id:hover { color: var(--tl-cyan); }
 .tl-cwe-list li:last-child { border-bottom: 0; padding-bottom: 0; }
 .tl-cwe__id { color: var(--tl-frost); font-weight: 600; margin-right: 0.25rem; }
 .tl-pagination { --bs-pagination-bg: rgba(16, 36, 59, 0.78); --bs-pagination-border-color: var(--tl-line); --bs-pagination-color: var(--tl-cyan); --bs-pagination-hover-bg: rgba(45, 212, 239, 0.1); --bs-pagination-hover-color: var(--tl-frost); --bs-pagination-active-bg: var(--tl-cyan); --bs-pagination-active-border-color: var(--tl-cyan); --bs-pagination-active-color: var(--tl-abyss); }
+
+/* ---------- Alerts (US11) ---------- */
+.tl-priority { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 6.5rem; }
+.tl-priority__value { font-family: var(--tl-display); font-weight: 600; color: var(--tl-frost); min-width: 1.6rem; text-align: right; }
+.tl-priority__bar { flex: 1; height: 6px; border-radius: 3px; background: var(--tl-line); overflow: hidden; }
+.tl-priority__bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--tl-cyan), var(--tl-amber) 60%, var(--tl-danger)); }
+.tl-status { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; border: 1px solid var(--tl-line); font-size: 0.78rem; font-weight: 600; color: var(--tl-mist); white-space: nowrap; }
+.tl-status--new { border-color: rgba(45, 212, 239, 0.6); color: var(--tl-cyan); }
+.tl-status--in_progress { border-color: rgba(245, 181, 68, 0.6); color: var(--tl-amber); }
+.tl-status--fixed { border-color: rgba(123, 216, 143, 0.6); color: #7bd88f; }
+.tl-status--risk_accepted, .tl-status--false_positive { border-style: dashed; }
+.tl-overdue, .tl-table td.tl-overdue, .tl-facts dd.tl-overdue { color: var(--tl-danger); }
+.tl-history li { padding: 0.65rem 0; border-bottom: 1px solid var(--tl-line); }
+.tl-history li:last-child { border-bottom: 0; padding-bottom: 0; }
+@media (max-width: 575.98px) {
+  .tl-priority { min-width: 0; }
+  .tl-priority__bar { display: none; }
+}
