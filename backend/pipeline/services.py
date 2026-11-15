@@ -53,6 +53,8 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
             stdout.write(
                 f"{name}: {task.status} - extracted {task.extracted}, loaded {task.loaded}, rejected {task.rejected}"
             )
+            if task.status == RunStatus.FAILED:  # the full traceback stays in the admin (Ingestion tasks)
+                stdout.write(f"{name}: error - {task.error_message.splitlines()[0]}")
 
     statuses = set(run.tasks.values_list("status", flat=True))
     alerts_ok = True

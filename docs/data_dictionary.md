@@ -13,7 +13,7 @@ Tables created by Django migrations in the `public` schema. The warehouse (`dw` 
 | `description` | text | CVE List V5 CNA `descriptions` (English) | Vulnerability description |
 | `published_at` | timestamptz, null | CVE List V5 `datePublished` | Publication date (records before 2023 may be inconsistent, risk R3) |
 | `source_updated_at` | timestamptz, null, indexed | CVE List V5 `dateUpdated` | Last update of the record; watermark of the incremental load |
-| `nvd_status` | varchar(32) | NVD API (Sprint 2) | NVD analysis status |
+| `nvd_status` | varchar(32) | NVD API `vulnStatus` | NVD analysis status (`Analyzed`, `Awaiting Analysis`, `Deferred`, `Modified`…); empty = not read from the NVD yet |
 | `epss_score` | float, null | FIRST EPSS (`epss` connector) | Probability of exploitation within 30 days (0–1) |
 | `epss_percentile` | float, null | FIRST EPSS (`epss` connector) | Percentile of the EPSS score (0–1) |
 | `effective_severity` | varchar, indexed | Computed after each run | Severity of the effective CVSS score (FR-06: NVD > CNA > CISA ADP, newest version first); empty = no score yet. Used by the search filters (US03) |
@@ -26,7 +26,7 @@ EPSS columns: only the latest score is kept; the `epss` connector updates them i
 | Column | Type | Description |
 |---|---|---|
 | `vulnerability_id` | FK → `cti_vulnerability` | Scored vulnerability |
-| `provider` | `NVD` / `CNA` / `CISA_ADP` | Who published the score (CVE List V5 loads CNA and CISA ADP) |
+| `provider` | `NVD` / `CNA` / `CISA_ADP` | Who published the score (CVE List V5 loads CNA and CISA ADP; the NVD connector loads the NVD scores of type *Primary*) |
 | `version` | varchar(8) | CVSS version: `2.0`, `3.0`, `3.1`, `4.0` |
 | `vector` | varchar(200) | CVSS vector string |
 | `base_score` | float, check 0–10 | Base score |
@@ -73,7 +73,7 @@ Unique: (`vulnerability`, `provider`, `version`). CISA ADP SSVC exploitation fie
 | Column | Type | Source field | Description |
 |---|---|---|---|
 | `vulnerability_id`, `weakness_id` | FK | `problemTypes[].descriptions[].cweId` | CWE named by the CVE record |
-| `provider` | varchar(10) | container | `CNA` or `CISA_ADP` (`NVD` from the NVD connector); unique with the two FKs |
+| `provider` | varchar(10) | container | `CNA` or `CISA_ADP` (cve connector), `NVD` (NVD weaknesses of type *Primary*); unique with the two FKs |
 
 ## Watchlist (`watchlist` app)
 
@@ -140,7 +140,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 
 | Column | Description |
 |---|---|
-| `name` | Connector key (`cwe`, `cve`, `kev`, `epss`), unique |
+| `name` | Connector key (`cwe`, `cve`, `nvd`, `kev`, `epss`), unique |
 | `label`, `url` | Display name and reference URL |
 | `frequency` | Update frequency (default `daily`) |
 | `is_active` | Disabled sources are skipped by `run_pipeline` (FR-15) |
@@ -175,6 +175,11 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 | CVE List V5 | state = `PUBLISHED` | otherwise skipped (counted) |
 | CVE List V5 | same CVE twice in a file | last one kept (counted) |
 | CVE List V5 | `cweId` matches `CWE-NNN` | otherwise not linked (free-text problem types ignored) |
+| NVD | identifier matches `CVE-YYYY-NNNN…` | otherwise rejected |
+| NVD | every CVSS base score in 0–10 | otherwise rejected |
+| NVD | CVE already in `cti_vulnerability` | otherwise skipped (counted: `skipped_not_in_cve_list`) |
+| NVD | only data of type *Primary* (NIST); `NVD-CWE-Other` / `NVD-CWE-noinfo` ignored | CNA data comes from CVE List V5 |
+| NVD | same CVE in two overlapping windows | last one kept (counted) |
 | CWE | identifier is a number | otherwise rejected |
 | CWE | name present | otherwise rejected |
 | CWE | CWE once in the catalog | duplicates rejected |
