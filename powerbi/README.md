@@ -17,12 +17,120 @@ The `powerbi_reader` account is read-only and can only see the `dw` schema (crea
 
 If Power BI asks about encryption, accept connecting without encryption: the database only listens on your own computer.
 
+To refresh the report with the latest data: run the pipeline (or `docker compose exec -T web python manage.py refresh_warehouse`), then click **Refresh** in Power BI Desktop.
+
 ## Files
 
 | File | Content |
 |---|---|
-| *(Sprint 2)* `threatlens_exposure.pbix` | first report (US09) |
+| `threatlens_exposure.pbix` | First report (US09): vulnerability volume, severity and exposure |
+| `check_kpis.sql` | Expected values of the report cards, computed in SQL (data-quality check of the report) |
+
+## Report `threatlens_exposure.pbix` (US09)
+
+### Model
+
+| Table | Rows | Note |
+|---|---|---|
+| `fact_vulnerability` | one per CVE × affected product | Count CVEs with `DISTINCTCOUNT(vuln_key)` |
+| `fact_alert` | one per alert | Exposure of the watchlist (CVE × watched product, product aliases included) |
+| `dim_date`, `dim_vulnerability`, `dim_product`, `dim_weakness`, `dim_severity` | dimensions | `dim_vulnerability` is loaded without `description` (size) |
+
+The other `dw` tables (ATT&CK, IOC, alert status, source) are added with the Sprint 3 pages.
+
+Relationships (many-to-one, single direction, from the fact table to the dimension):
+
+| From | To | Active |
+|---|---|---|
+| `fact_vulnerability[vuln_key]` | `dim_vulnerability[vuln_key]` | yes |
+| `fact_vulnerability[product_key]` | `dim_product[product_key]` | yes |
+| `fact_vulnerability[weakness_key]` | `dim_weakness[weakness_key]` | yes |
+| `fact_vulnerability[severity_key]` | `dim_severity[severity_key]` | yes |
+| `fact_vulnerability[published_date_key]` | `dim_date[date_key]` | yes (role: published) |
+| `fact_vulnerability[kev_date_key]` | `dim_date[date_key]` | **no** (role: KEV added, used with `USERELATIONSHIP`) |
+| `fact_alert[vuln_key]` | `dim_vulnerability[vuln_key]` | yes |
+| `fact_alert[product_key]` | `dim_product[product_key]` | yes |
+| `fact_alert[severity_key]` | `dim_severity[severity_key]` | yes |
+| `fact_alert[created_date_key]` | `dim_date[date_key]` | yes (role: alert created) |
+
+Model settings:
+- *File → Options and settings → Options → Current file → Data load*: **Auto date/time** off.
+- `dim_severity[label]`: *Sort by column* → `severity_key`.
+- Calculated column `dim_date[Year Month] = FORMAT(dim_date[full_date], "yyyy-MM")` (DAX names are case-insensitive: `Month` would clash with the `month` column).
+- Hierarchy **Calendar** in `dim_date`: `year` → `quarter` → `month` → `full_date`.
+
+### Measures
+
+```dax
+-- in fact_vulnerability
+CVEs = DISTINCTCOUNT ( fact_vulnerability[vuln_key] )
+New CVEs (30 days) = CALCULATE ( [CVEs], dim_date[full_date] > TODAY () - 30 )
+CVEs without CVSS = CALCULATE ( [CVEs], dim_severity[label] = "NO_SCORE" )
+% without CVSS = DIVIDE ( [CVEs without CVSS], [CVEs] )
+KEV CVEs = CALCULATE ( [CVEs], fact_vulnerability[is_kev] = TRUE () )
+% KEV = DIVIDE ( [KEV CVEs], [CVEs] )
+Median days to KEV =
+    CALCULATE (
+        MEDIANX (
+            SUMMARIZE ( fact_vulnerability, fact_vulnerability[vuln_key], fact_vulnerability[days_to_kev] ),
+            fact_vulnerability[days_to_kev]
+        ),
+        fact_vulnerability[is_kev] = TRUE ()
+    )
+KEV CVEs by date added = CALCULATE ( [KEV CVEs], USERELATIONSHIP ( fact_vulnerability[kev_date_key], dim_date[date_key] ) )
+Median days to KEV by date added = CALCULATE ( [Median days to KEV], USERELATIONSHIP ( fact_vulnerability[kev_date_key], dim_date[date_key] ) )
+
+-- in fact_alert
+Watchlist CVEs = DISTINCTCOUNT ( fact_alert[vuln_key] )
+Watchlist KEV CVEs = CALCULATE ( [Watchlist CVEs], fact_alert[is_kev] = TRUE () )
+
+-- in dim_product
+Watched products = CALCULATE ( COUNTROWS ( dim_product ), dim_product[is_watched] = TRUE () )
+```
+
+Format: `% without CVSS` and `% KEV` as percentage with 1 decimal; the others as whole numbers.
+
+### Pages
+
+| Page | Visuals |
+|---|---|
+| **Volume** | Cards: `CVEs`, `New CVEs (30 days)`, `% KEV`. Clustered column chart: X = hierarchy **Calendar**, Y = `CVEs` (drill-down year → quarter → month → day). Line chart: X = `dim_date[Year Month]`, Y = `CVEs`, filter `full_date` in the last 24 months. Slicers: `dim_date[year]` (between), `dim_severity[label]`. |
+| **Severity** | Cards: `CVEs without CVSS`, `% without CVSS`. Stacked column chart: X = `dim_date[year]`, Y = `CVEs`, legend = `dim_severity[label]`. Line chart: X = `dim_date[Year Month]`, Y = `% without CVSS`, last 24 months (shows the CVEs left without a score). Bar chart: Y = `dim_severity[label]`, X = `CVEs`. Slicer: `dim_date[year]`. |
+| **Exposure** | Cards: `Watched products`, `Watchlist CVEs`, `Watchlist KEV CVEs`, `Median days to KEV`. Table of watched products: `vendor`, `product`, `criticality`, `Watchlist CVEs`, `Watchlist KEV CVEs` (filter `is_watched` = True). Bar charts: top 10 `dim_product[vendor]` by `CVEs` (visual filters: `dim_product[product_key]` is not 0, Top N 10 on `vendor`) and top 10 `dim_weakness[cwe_id]` by `CVEs` with `name` in the tooltip (visual filters: `dim_weakness[weakness_key]` is not 0, Top N 10 on `cwe_id`). Line and clustered column chart: X = `dim_date[year]`, columns = `KEV CVEs by date added`, line = `Median days to KEV by date added`, visual filter `year` ≥ 2021 (start of the KEV catalog). No date slicer on this page. |
+
+**Check.** With no slicer selected, the cards must show the values of `docker compose exec -T db psql -U threatlens -d threatlens < powerbi/check_kpis.sql`.
+
+Severity colors (same as the console): CRITICAL `#FF6B6B`, HIGH `#F5B544`, MEDIUM `#2DD4EF`, LOW `#7BD88F`, NONE `#9FB3CA`, NO_SCORE `#5B6B7F`.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| *We couldn't authenticate with the credentials provided* although the password is the one of `.env` | Another PostgreSQL installed on Windows also listens on port 5432 (`netstat -ano \| grep ":5432 "` shows two PIDs). Stop it (PowerShell as administrator: `Get-Service *postgres* \| Stop-Service`) or use the server `127.0.0.1:5432`. |
+| The `powerbi_reader` password in the database differs from `.env` (the role is created once, with the database volume) | Reset it from `.env`: see the command below. |
+
+```bash
+PW=$(grep '^POWERBI_READER_PASSWORD=' .env | cut -d= -f2-)
+docker compose exec -T db psql -U threatlens -d threatlens -v ON_ERROR_STOP=1 -v pw="$PW" <<'SQL'
+SELECT 'CREATE ROLE powerbi_reader LOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'powerbi_reader')\gexec
+ALTER ROLE powerbi_reader WITH LOGIN PASSWORD :'pw';
+GRANT CONNECT ON DATABASE threatlens TO powerbi_reader;
+GRANT USAGE ON SCHEMA dw TO powerbi_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA dw TO powerbi_reader;
+ALTER ROLE powerbi_reader SET search_path = dw;
+SQL
+```
 
 ## KPIs
 
-Documented here as the reports are built (definition, DAX measure, source table).
+| KPI (FR-22) | Definition | Measure | Source |
+|---|---|---|---|
+| New CVEs per period | Distinct CVEs by publication date (day, month, quarter, year) | `CVEs` with the **Calendar** hierarchy; `New CVEs (30 days)` | `fact_vulnerability`, `dim_date` (published) |
+| Share of CVEs without any CVSS score | CVEs whose effective severity is `NO_SCORE` / all CVEs | `% without CVSS` | `fact_vulnerability`, `dim_severity` |
+| KEV vulnerabilities affecting the watchlist | Distinct KEV CVEs with an alert on a watched product (product names and aliases) | `Watchlist KEV CVEs` | `fact_alert` |
+| Delay between publication and KEV addition | Median of `days_to_kev` over distinct KEV CVEs (the median, because CVEs added when the catalog started in 2021 are years old) | `Median days to KEV`, `Median days to KEV by date added` | `fact_vulnerability`, `dim_date` (KEV added) |
+| Open alerts by priority and status, mean time to remediate, overdue alerts | Sprint 3 (US12) | | `fact_alert` |
+| IOC volume by malware family | Sprint 3–4 (ThreatFox) | | `fact_ioc` |
+| Performance of M1 and M2 | Sprint 3–4 | | ML metrics |
+
+`Watchlist CVEs` counts only the CVEs that have an alert. For CVEs loaded before a product was added to the watchlist, run `generate_alerts --since` first (see the main README).
