@@ -10,14 +10,15 @@ from unittest import mock
 import requests
 from django.test import TestCase, override_settings
 
-from cti.models import CVSSMetric, ScoreProvider, Vulnerability, VulnerabilityWeakness, Weakness
+from cti.models import AffectedProduct, CVSSMetric, Product, ScoreProvider, Vulnerability, VulnerabilityWeakness, Weakness
 from pipeline.connectors.cve_list_v5 import severity_from_score
-from pipeline.connectors.nvd import MAX_ATTEMPTS, MAX_WINDOW, OVERLAP, NvdConnector, parse_cve
+from pipeline.connectors.nvd import MAX_ATTEMPTS, MAX_WINDOW, OVERLAP, NvdConnector, extract_cpes, parse_cve
 from pipeline.models import IngestionTask, PipelineRun, RunStatus, Source
 from pipeline.services import ensure_sources, run_pipeline
 
 
-def nvd_cve(cve_id, *, status="Analyzed", v31=9.8, v2=None, cna_v31=7.5, cwes=("CWE-79",), cna_cwes=("CWE-20",)):
+def nvd_cve(cve_id, *, status="Analyzed", v31=9.8, v2=None, cna_v31=7.5, cwes=("CWE-79",), cna_cwes=("CWE-20",),
+            cpes=()):
     """One `cve` object as returned by the NVD API 2.0 (Primary = NVD, Secondary = CNA)."""
     metrics = {}
     if v31 is not None:
@@ -42,8 +43,12 @@ def nvd_cve(cve_id, *, status="Analyzed", v31=9.8, v2=None, cna_v31=7.5, cwes=("
         {"source": "psirt@vendor.example", "type": "Secondary",
          "description": [{"lang": "en", "value": c} for c in cna_cwes]},
     ]
+    configurations = [{"nodes": [{"operator": "OR", "negate": False, "cpeMatch": [
+        {"vulnerable": True, "criteria": f"{cpe}:*:*:*:*:*:*:*:*", "matchCriteriaId": "00000000-0000-0000-0000-000000000000"}
+        for cpe in cpes
+    ] + [{"vulnerable": False, "criteria": "cpe:2.3:h:fortinet:fortigate_60f:-:*:*:*:*:*:*:*"}]}]}]  # running on: ignored
     return {"id": cve_id, "vulnStatus": status, "lastModified": "2026-11-10T10:00:00.000",
-            "metrics": metrics, "weaknesses": weaknesses}
+            "metrics": metrics, "weaknesses": weaknesses, "configurations": configurations}
 
 
 def page(cves, start=0, total=None):
@@ -67,6 +72,12 @@ class ParseTests(TestCase):
         self.assertTrue(all(m["provider"] == ScoreProvider.NVD for m in record["metrics"]))
         self.assertEqual(record["weaknesses"], ["CWE-79"])  # not the CNA CWE-20, not NVD-CWE-noinfo
         self.assertEqual(record["nvd_status"], "Analyzed")
+
+    def test_vulnerable_cpes_are_read_with_their_escapes(self):
+        cpes = extract_cpes(nvd_cve("CVE-2026-0001", cpes=["cpe:2.3:o:microsoft:windows_10",
+                                                          "cpe:2.3:a:acme:foo\\:bar", "cpe:2.3:a:*:*"])["configurations"])
+        self.assertEqual(cpes, [("cpe:2.3:o:microsoft:windows_10", "microsoft", "windows 10"),
+                                ("cpe:2.3:a:acme:foo\\:bar", "acme", "foo:bar")])
 
     def test_cve_without_nvd_enrichment(self):
         record = parse_cve(nvd_cve("CVE-2026-0002", status="Awaiting Analysis", v31=None, cwes=()))
@@ -109,6 +120,25 @@ class NvdLoadTests(TestCase):
         self.run_nvd([nvd_cve("CVE-2026-0001", v31=5.3)])  # NVD 5.3 MEDIUM beats the CNA 7.5 HIGH (FR-06)
         self.cve.refresh_from_db()
         self.assertEqual((self.cve.effective_severity, self.cve.effective_score), ("MEDIUM", 5.3))
+
+    def test_cpe_prefix_is_set_on_the_affected_products_named_exactly(self):
+        fortios = Product.objects.create(vendor="fortinet", name="fortios")
+        panos = Product.objects.create(vendor="palo alto networks", name="pan-os")
+        windows = Product.objects.create(vendor="microsoft", name="windows 10")  # not affected by CVE-2026-0001
+        for product in (fortios, panos):
+            AffectedProduct.objects.create(vulnerability=self.cve, product=product, versions="1.0")
+        _, task = self.run_nvd([nvd_cve("CVE-2026-0001", cpes=[
+            "cpe:2.3:o:fortinet:fortios", "cpe:2.3:o:paloaltonetworks:pan-os", "cpe:2.3:o:microsoft:windows_10"])])
+        self.assertEqual(dict(Product.objects.values_list("name", "cpe_prefix")),
+                         {"fortios": "cpe:2.3:o:fortinet:fortios", "pan-os": "", "windows 10": ""})
+        self.assertEqual((task.quality_report["products_cpe_set"], task.quality_report["cpes_not_matched"]), (1, 2))
+
+    def test_cpe_prefix_already_set_is_kept(self):
+        fortios = Product.objects.create(vendor="fortinet", name="fortios", cpe_prefix="cpe:2.3:o:fortinet:fortios")
+        AffectedProduct.objects.create(vulnerability=self.cve, product=fortios, versions="1.0")
+        self.run_nvd([nvd_cve("CVE-2026-0001", cpes=["cpe:2.3:a:fortinet:fortios"])])
+        fortios.refresh_from_db()
+        self.assertEqual(fortios.cpe_prefix, "cpe:2.3:o:fortinet:fortios")
 
     def test_cves_not_in_the_cve_list_are_skipped(self):
         _, task = self.run_nvd([nvd_cve("CVE-2026-0001"), nvd_cve("CVE-2026-9999")])

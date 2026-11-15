@@ -6,6 +6,12 @@ A free API key (NVD_API_KEY in .env) raises the limit from 5 to 50 requests per 
 Per CVE we keep only what NIST itself published (type "Primary"): the NVD CVSS scores
 (every version), the NVD CWE identifiers and the NVD analysis status (vulnStatus).
 The scores and CWEs of the CNA ("Secondary") already come from the cve connector.
+
+CPE enrichment: when a vulnerable CPE of the CVE names exactly one of the CVE's affected
+products (same vendor and product, "_" read as a space), its prefix (cpe:2.3:part:vendor:product)
+is stored in cti_product.cpe_prefix. A product keeps the first prefix found. Names written
+differently by the CNA and by the NVD (e.g. "palo alto networks" / "paloaltonetworks") stay
+without a CPE: the watchlist matching uses product names and aliases, not CPEs.
 Since 15 April 2026 NIST only enriches priority CVEs: many records have no NVD score.
 
 CVEs that are not in cti_vulnerability (not yet in CVE List V5, or rejected there) are skipped:
@@ -23,6 +29,7 @@ import gzip
 import json
 import re
 import time
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from typing import Iterator
@@ -31,7 +38,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
-from cti.models import CVSSMetric, ScoreProvider, Vulnerability, VulnerabilityWeakness, Weakness
+from cti.models import AffectedProduct, CVSSMetric, Product, ScoreProvider, Vulnerability, VulnerabilityWeakness, Weakness
 from pipeline.models import IngestionTask, RunStatus
 
 from .base import BaseConnector, Reject
@@ -50,6 +57,31 @@ REQUEST_TIMEOUT = 120
 CVE_ID = re.compile(r"^CVE-\d{4}-\d{4,}$")
 CWE_ID = re.compile(r"^CWE-\d+$")
 NVD_METRIC_KEYS = {"cvssMetricV2": "2.0", "cvssMetricV30": "3.0", "cvssMetricV31": "3.1", "cvssMetricV40": "4.0"}
+CPE_FIELD = re.compile(r"(?<!\\):")  # CPE 2.3 fields are separated by ":", "\:" is an escaped colon
+
+
+def cpe_name(value: str) -> str:
+    """CPE vendor or product -> the form of our product names: 'windows_10' -> 'windows 10'."""
+    unescaped = re.sub(r"\\(.)", r"\1", value).replace("_", " ")
+    return " ".join(unescaped.split()).lower()[:200]
+
+
+def extract_cpes(configurations: list) -> list[tuple[str, str, str]]:
+    """(prefix, vendor, product) of every vulnerable CPE of the configurations, without duplicates."""
+    found = []
+    for configuration in configurations or []:
+        for node in configuration.get("nodes", []) or []:
+            for match in node.get("cpeMatch", []) or []:
+                fields = CPE_FIELD.split(str(match.get("criteria") or ""))
+                if not match.get("vulnerable") or len(fields) < 5 or fields[:2] != ["cpe", "2.3"]:
+                    continue
+                part, vendor, product = fields[2:5]
+                if "*" in (vendor, product) or "-" in (vendor, product):
+                    continue
+                item = (":".join(fields[:5])[:200], cpe_name(vendor), cpe_name(product))
+                if item not in found:
+                    found.append(item)
+    return found
 
 
 def nvd_time(value: datetime) -> str:
@@ -88,6 +120,7 @@ def parse_cve(cve: dict) -> dict:
         "nvd_status": str(cve.get("vulnStatus") or "")[:32],
         "metrics": metrics,
         "weaknesses": weaknesses,
+        "cpes": extract_cpes(cve.get("configurations")),
     }
 
 
@@ -250,7 +283,29 @@ class NvdConnector(BaseConnector):
         ]
         VulnerabilityWeakness.objects.bulk_create(links)
 
+        self._set_cpe_prefixes(known, ids)
+
         self.counters["cvss_metrics_loaded"] += len(metrics)
         self.counters["cwe_links_loaded"] += len(links)
         self.counters["without_nvd_score"] += sum(1 for r in known if not r["metrics"])
         return len(known)
+
+    def _set_cpe_prefixes(self, records: list[dict], ids: dict[str, int]) -> None:
+        """cpe_prefix of the affected products named exactly by a vulnerable CPE of the same CVE."""
+        affected = defaultdict(dict)  # vulnerability id -> {(vendor, name): product id}
+        for vulnerability_id, product_id, vendor, name in AffectedProduct.objects.filter(
+            vulnerability_id__in=[ids[r["cve_id"]] for r in records]
+        ).values_list("vulnerability_id", "product_id", "product__vendor", "product__name"):
+            affected[vulnerability_id][(vendor, name)] = product_id
+        votes = defaultdict(Counter)  # product id -> how often each prefix names it
+        for record in records:
+            products = affected[ids[record["cve_id"]]]
+            for prefix, vendor, product in record["cpes"]:
+                if (vendor, product) in products:
+                    votes[products[(vendor, product)]][prefix] += 1
+                else:
+                    self.counters["cpes_not_matched"] += 1
+        empty = set(Product.objects.filter(id__in=votes, cpe_prefix="").values_list("id", flat=True))
+        updates = [Product(id=pk, cpe_prefix=votes[pk].most_common(1)[0][0]) for pk in sorted(empty)]
+        Product.objects.bulk_update(updates, ["cpe_prefix"])
+        self.counters["products_cpe_set"] += len(updates)

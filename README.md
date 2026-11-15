@@ -144,7 +144,7 @@ docker compose run --rm etl                                              # every
 | `--full` | reload every record, not only those updated since the last load (`cve`, `nvd`) |
 | `--triggered-by USERNAME` | record the administrator who started the run |
 
-**NVD (US05).** The API key `NVD_API_KEY` of `.env` raises the limit from 5 to 50 requests per 30 seconds. Only the NVD's own data is kept (CVSS scores and CWEs of type *Primary*, status `vulnStatus`); since April 2026 NIST no longer scores every CVE, the quality report counts them (`without_nvd_score`). After the first load, each run reads only the CVEs modified since the previous successful run.
+**NVD (US05).** The API key `NVD_API_KEY` of `.env` raises the limit from 5 to 50 requests per 30 seconds. Only the NVD's own data is kept (CVSS scores and CWEs of type *Primary*, status `vulnStatus`, and the CPE prefix of the products whose names match the NVD CPE exactly); since April 2026 NIST no longer scores every CVE, the quality report counts them (`without_nvd_score`). After the first load, each run reads only the CVEs modified since the previous successful run.
 
 Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message.
 

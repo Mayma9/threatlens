@@ -39,7 +39,7 @@ Unique: (`vulnerability`, `provider`, `version`). CISA ADP SSVC exploitation fie
 | Column | Type | Description |
 |---|---|---|
 | `vendor`, `name` | varchar(200) | Lowercase, single-spaced names as published by the CNA; unique together. Placeholders (`n/a`, `unknown`…) are not loaded. |
-| `cpe_prefix` | varchar(200) | CPE prefix (NVD, Sprint 2) |
+| `cpe_prefix` | varchar(200) | NVD CPE prefix `cpe:2.3:part:vendor:product`, set when a vulnerable CPE of one of the product's CVEs names exactly this vendor and product (`_` read as a space); empty when the CNA and the NVD spell the names differently. The first prefix found is kept |
 
 ### `cti_affectedproduct` — vulnerability × affected product
 
@@ -180,6 +180,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 | NVD | CVE already in `cti_vulnerability` | otherwise skipped (counted: `skipped_not_in_cve_list`) |
 | NVD | only data of type *Primary* (NIST); `NVD-CWE-Other` / `NVD-CWE-noinfo` ignored | CNA data comes from CVE List V5 |
 | NVD | same CVE in two overlapping windows | last one kept (counted) |
+| NVD | CPE prefix only for an affected product of the same CVE with exactly the same vendor and product | otherwise not used (counted: `cpes_not_matched`) |
 | CWE | identifier is a number | otherwise rejected |
 | CWE | name present | otherwise rejected |
 | CWE | CWE once in the catalog | duplicates rejected |
