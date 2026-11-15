@@ -1,0 +1,55 @@
+{% extends "accounts/base.html" %}
+{% block title %}Remediation plans{% endblock %}
+{% block content %}
+<h1 class="tl-page-title">Remediation plans</h1>
+<p class="tl-muted">Each week, the analysts of {{ organization }} select the alerts to fix first and a CISO approves the plan.</p>
+
+<div class="row g-3 mt-2">
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-3">New plan</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
+        {{ form.week }}
+        {% for error in form.week.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        <p class="small tl-muted mt-2">{{ form.week.help_text }}</p>
+        <button type="submit" class="btn btn-primary">Create the plan</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="tl-panel overflow-hidden h-100">
+      {% if plans %}
+      <div class="table-responsive">
+        <table class="table tl-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Week</th>
+              <th scope="col">Status</th>
+              <th scope="col">Alerts</th>
+              <th scope="col" class="d-none d-md-table-cell">Prepared by</th>
+              <th scope="col" class="d-none d-md-table-cell">Approved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for plan in plans %}
+            <tr>
+              <td class="text-nowrap"><a class="tl-cve__id" href="{% url 'plans:detail' plan.pk %}">{{ plan.period_start|date:"d M" }} – {{ plan.period_end|date:"d M Y" }}</a></td>
+              <td><span class="tl-plan tl-plan--{{ plan.status|lower }}">{{ plan.get_status_display }}</span></td>
+              <td class="small">{{ plan.alert_count }}{% if plan.alert_count %} <span class="tl-muted">({{ plan.fixed_count }} fixed)</span>{% endif %}</td>
+              <td class="d-none d-md-table-cell small">{{ plan.prepared_by.get_username }}</td>
+              <td class="d-none d-md-table-cell small">{% if plan.validated_at %}{{ plan.validated_by.get_username }}, {{ plan.validated_at|date:"d M Y" }}{% else %}<span class="tl-muted">—</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="p-4 mb-0 tl-muted">No plan yet. Create the plan of this week, then add the alerts to fix.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -126,6 +126,7 @@ Open http://localhost:8000 and log in as `analyst1` or `ciso1`.
 | Enriched CVE record: CVSS scores by provider, effective severity, EPSS, KEV, CWE, affected products | `/vulnerabilities/CVE-2024-3400/` (or a click on a search result) | US04 |
 | Watchlist and product aliases | `/watchlist/` | US07 |
 | Prioritized alerts: open alerts sorted by priority score, filters, status / assignee / comment, history, score explained | `/alerts/` | US11 |
+| Weekly remediation plan: the analyst selects open alerts and submits the plan, a CISO approves it or requests changes (log in as `ciso1`) | `/plans/` | US13 |
 
 ## ETL pipeline
 
