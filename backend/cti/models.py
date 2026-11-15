@@ -177,3 +177,39 @@ class VulnerabilityWeakness(models.Model):
 
     def __str__(self) -> str:
         return f"{self.vulnerability} {self.weakness.cwe_id} ({self.provider})"
+
+
+class Malware(models.Model):
+    """Malware family named by ThreatFox, identified by its Malpedia name (e.g. "win.cobalt_strike")."""
+
+    malpedia_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=200)  # display name, e.g. "Cobalt Strike"
+    category = models.CharField(max_length=50, blank=True)  # target platform, from the Malpedia prefix
+
+    class Meta:
+        verbose_name_plural = "malware"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Indicator(models.Model):
+    """Indicator of compromise (IOC) published by abuse.ch ThreatFox.
+
+    The value is data only: it is never visited, resolved or rendered as a link (risk R9).
+    """
+
+    threatfox_id = models.BigIntegerField(unique=True)
+    value = models.TextField()
+    ioc_type = models.CharField(max_length=50)  # ip:port, domain, url, md5_hash, sha256_hash...
+    threat_type = models.CharField(max_length=50)  # botnet_cc, payload_delivery, payload...
+    malware = models.ForeignKey(Malware, null=True, blank=True, on_delete=models.SET_NULL, related_name="indicators")
+    confidence = models.PositiveSmallIntegerField()  # 0-100
+    first_seen = models.DateTimeField()
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["first_seen"], name="cti_indicator_first_seen")]
+
+    def __str__(self) -> str:
+        return f"{self.ioc_type} {self.value[:60]}"

@@ -134,17 +134,20 @@ docker compose run --rm etl python manage.py run_pipeline --source cve   # CVE L
 docker compose run --rm etl python manage.py run_pipeline --source nvd   # NVD scores, CWEs and status (needs the CVEs; first load: about 1 hour, then only the changes)
 docker compose run --rm etl python manage.py run_pipeline --source kev   # CISA KEV (needs the CVEs first)
 docker compose run --rm etl python manage.py run_pipeline --source epss  # FIRST EPSS scores (needs the CVEs first)
+docker compose run --rm etl python manage.py run_pipeline --source threatfox  # abuse.ch ThreatFox IOCs of the last 7 days
 docker compose run --rm etl                                              # every active source, in order
 ```
 
 | Option | Effect |
 |---|---|
-| `--source NAME` | run one source (repeatable): `cwe`, `cve`, `nvd`, `kev`, `epss` |
+| `--source NAME` | run one source (repeatable): `cwe`, `cve`, `nvd`, `kev`, `epss`, `threatfox` |
 | `--file PATH` | load a local snapshot instead of downloading (one source only) |
 | `--full` | reload every record, not only those updated since the last load (`cve`, `nvd`) |
 | `--triggered-by USERNAME` | record the administrator who started the run |
 
 **NVD (US05).** The API key `NVD_API_KEY` of `.env` raises the limit from 5 to 50 requests per 30 seconds. Only the NVD's own data is kept (CVSS scores and CWEs of type *Primary*, status `vulnStatus`, and the CPE prefix of the products whose names match the NVD CPE exactly); since April 2026 NIST no longer scores every CVE, the quality report counts them (`without_nvd_score`). After the first load, each run reads only the CVEs modified since the previous successful run.
+
+**ThreatFox (US05, FR-14).** The Auth-Key `ABUSECH_AUTH_KEY` of `.env` is required. Each run reads the IOCs first seen in the last 7 days (the maximum of the API) and updates those already loaded, so the history grows from the first run on: run the pipeline at least once a week. IOCs are metadata only, never visited or opened (risk R9); they are analyzed in Power BI (`fact_ioc`), not in the console.
 
 Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message.
 

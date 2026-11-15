@@ -4,13 +4,14 @@
 -- (psql -1, or the refresh_warehouse command): if anything fails, nothing changes.
 -- Running it twice gives the same rows (idempotent).
 --
--- Not filled yet (no source in the operational schema): dim_technique, bridge_cve_technique,
--- dim_indicator, dim_malware, dim_threat_type and fact_ioc stay empty.
+-- Not filled yet (no source in the operational schema): dim_technique and bridge_cve_technique
+-- stay empty until the ATT&CK and CTID connectors exist.
 
 TRUNCATE
     dw.fact_vulnerability, dw.fact_alert, dw.fact_ioc, dw.bridge_cve_technique,
     dw.dim_date, dw.dim_source, dw.dim_vulnerability, dw.dim_product,
-    dw.dim_weakness, dw.dim_severity, dw.dim_alert_status;
+    dw.dim_weakness, dw.dim_severity, dw.dim_alert_status,
+    dw.dim_indicator, dw.dim_malware, dw.dim_threat_type;
 
 -- ============================================================ dimensions
 
@@ -21,12 +22,14 @@ WITH bounds AS (
             (SELECT min((published_at AT TIME ZONE 'UTC')::date) FROM public.cti_vulnerability),
             (SELECT min(date_added) FROM public.cti_keventry),
             (SELECT min((created_at AT TIME ZONE 'UTC')::date) FROM public.alerts_alert),
+            (SELECT min((first_seen AT TIME ZONE 'UTC')::date) FROM public.cti_indicator),
             (now() AT TIME ZONE 'UTC')::date
         ) AS first_day,
         greatest(
             (SELECT max((published_at AT TIME ZONE 'UTC')::date) FROM public.cti_vulnerability),
             (SELECT max(date_added) FROM public.cti_keventry),
             (SELECT max((created_at AT TIME ZONE 'UTC')::date) FROM public.alerts_alert),
+            (SELECT max((first_seen AT TIME ZONE 'UTC')::date) FROM public.cti_indicator),
             (now() AT TIME ZONE 'UTC')::date
         ) AS last_day
 )
@@ -49,6 +52,8 @@ SELECT
     CASE name
         WHEN 'cve'  THEN 'vulnerability catalog'
         WHEN 'cwe'  THEN 'weakness catalog'
+        WHEN 'nvd'  THEN 'vulnerability enrichment'
+        WHEN 'threatfox' THEN 'threat indicators'
         WHEN 'kev'  THEN 'exploitation catalog'
         WHEN 'epss' THEN 'scoring'
         ELSE 'other'
@@ -175,5 +180,42 @@ LEFT JOIN LATERAL (
     WHERE c.alert_id = al.id AND c.new_status IN ('FIXED', 'RISK_ACCEPTED', 'FALSE_POSITIVE')
 ) closed ON true;
 
+-- ============================================================ threat activity (ThreatFox)
+
+INSERT INTO dw.dim_malware (malware_key, family, category)
+SELECT id, name, category
+FROM public.cti_malware;
+
+INSERT INTO dw.dim_threat_type (threat_type_key, label, description)
+SELECT
+    row_number() OVER (ORDER BY threat_type),
+    threat_type,
+    CASE threat_type
+        WHEN 'botnet_cc'        THEN 'Botnet command and control server'
+        WHEN 'payload_delivery' THEN 'Host or URL that delivers a malware payload'
+        WHEN 'payload'          THEN 'Malware payload (file hash)'
+        ELSE ''
+    END
+FROM (SELECT DISTINCT threat_type FROM public.cti_indicator) AS t;
+
+INSERT INTO dw.dim_indicator (indicator_key, value, ioc_type)
+SELECT id, left(value, 500), ioc_type
+FROM public.cti_indicator;
+
+-- Grain: one row per indicator x first-seen day x source (ThreatFox gives one first_seen per IOC).
+INSERT INTO dw.fact_ioc (indicator_key, first_seen_date_key, malware_key, threat_type_key, source_key, ioc_count, confidence)
+SELECT
+    i.id,
+    to_char((i.first_seen AT TIME ZONE 'UTC')::date, 'YYYYMMDD')::integer,
+    i.malware_id,
+    tt.threat_type_key,
+    src.source_key,
+    1,
+    i.confidence
+FROM public.cti_indicator i
+JOIN dw.dim_threat_type tt ON tt.label = i.threat_type
+CROSS JOIN (SELECT source_key FROM dw.dim_source WHERE name = 'threatfox') AS src;
+
 ANALYZE dw.fact_vulnerability;
 ANALYZE dw.fact_alert;
+ANALYZE dw.fact_ioc;

@@ -21,7 +21,7 @@ Constellation schema of section 11.2 of the specification (FR-19): three fact ta
 | `dim_date`, `dim_source`, `dim_vulnerability`, `dim_product`, `dim_weakness`, `dim_severity`, `dim_alert_status`, `fact_vulnerability` | Loaded | Sources exist in `public` |
 | `fact_alert` | Loaded, empty while no product is watched | Alerts come from the watchlist |
 | `dim_technique`, `bridge_cve_technique` | Empty | ATT&CK mapping is not loaded yet |
-| `dim_indicator`, `dim_malware`, `dim_threat_type`, `fact_ioc` | Empty | The ThreatFox connector does not exist yet |
+| `dim_indicator`, `dim_malware`, `dim_threat_type`, `fact_ioc` | Loaded | From `cti_indicator` and `cti_malware` (ThreatFox) |
 
 ## Fact tables
 
@@ -69,7 +69,7 @@ An alert belongs to one watched product of one organization, so a CVE that touch
 
 ### `fact_ioc` — grain: one row per indicator × first-seen day × source
 
-Empty until the ThreatFox connector exists. Primary key: (`indicator_key`, `first_seen_date_key`, `source_key`).
+From `cti_indicator` (ThreatFox gives one `first_seen` per IOC, so one row per IOC). Primary key: (`indicator_key`, `first_seen_date_key`, `source_key`). FR-14: IOC volume by malware family and threat type = `SUM(ioc_count)`.
 
 | Column | Type | Description |
 |---|---|---|
@@ -86,16 +86,16 @@ Empty until the ThreatFox connector exists. Primary key: (`indicator_key`, `firs
 | Table | Key | Columns | Loading rule |
 |---|---|---|---|
 | `dim_date` | `date_key` (yyyymmdd) | `full_date`, `day`, `week` (ISO), `month`, `quarter`, `year` | One row per day, from the earliest to the latest date used by the data (and today). One table, four roles: published, kev_added, alert_created, alert_closed (and first_seen for IOCs). |
-| `dim_source` | `source_key` | `name`, `source_type`, `url` | From `pipeline_source`. `source_type` is a label chosen for the warehouse: `cve` = vulnerability catalog, `cwe` = weakness catalog, `kev` = exploitation catalog, `epss` = scoring. |
+| `dim_source` | `source_key` | `name`, `source_type`, `url` | From `pipeline_source`. `source_type` is a label chosen for the warehouse: `cve` = vulnerability catalog, `cwe` = weakness catalog, `nvd` = vulnerability enrichment, `kev` = exploitation catalog, `epss` = scoring, `threatfox` = threat indicators. |
 | `dim_vulnerability` | `vuln_key` | `cve_id`, `description`, `nvd_status`, `published_at` (date) | From `cti_vulnerability` |
 | `dim_product` | `product_key` (0 = unknown) | `vendor`, `product`, `cpe_prefix`, `is_watched`, `criticality` | From `cti_product`. `is_watched` is true when an organization watches the product; `criticality` is the **highest** criticality among the organizations that watch it. Names are as published by the CNAs (risk R10): the same vendor may appear under several spellings. |
 | `dim_weakness` | `weakness_key` (0 = unknown) | `cwe_id`, `name` | The whole MITRE CWE catalog from `cti_weakness` (weaknesses and categories), plus `0` = the CVE record names no CWE |
 | `dim_severity` | `severity_key` | `label`, `score_min`, `score_max` | Static: 0 `NO_SCORE` (no CVSS score), 1 `NONE` (0.0), 2 `LOW` (0.1–3.9), 3 `MEDIUM` (4.0–6.9), 4 `HIGH` (7.0–8.9), 5 `CRITICAL` (9.0–10.0) |
 | `dim_alert_status` | `status_key` | `label`, `is_open` | Static: 1 `NEW` and 2 `IN_PROGRESS` (open), 3 `FIXED`, 4 `RISK_ACCEPTED`, 5 `FALSE_POSITIVE` (closed) |
 | `dim_technique` | `technique_key` | `technique_id`, `name`, `tactic` | Empty (ATT&CK) |
-| `dim_indicator` | `indicator_key` | `value`, `ioc_type` | Empty (ThreatFox) |
-| `dim_malware` | `malware_key` | `family`, `category` | Empty (ThreatFox) |
-| `dim_threat_type` | `threat_type_key` | `label`, `description` | Empty (ThreatFox) |
+| `dim_indicator` | `indicator_key` | `value`, `ioc_type` | One row per `cti_indicator` (`value` cut to 500 characters) |
+| `dim_malware` | `malware_key` | `family`, `category` | One row per `cti_malware`; `category` = target platform |
+| `dim_threat_type` | `threat_type_key` | `label`, `description` | Distinct `threat_type` of `cti_indicator`, with a description for `botnet_cc`, `payload_delivery`, `payload` |
 
 ### `bridge_cve_technique` — CVE × ATT&CK technique
 
