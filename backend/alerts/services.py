@@ -100,3 +100,28 @@ def unmatched_names_in(vulnerability_ids, items, limit: int = UNMATCHED_LIMIT) -
         if len(names) == limit:
             break
     return names
+
+
+def change_status(alert: Alert, *, new_status: str, user, comment: str = "", assignee=None) -> list[str]:
+    """Analyst update of an alert (FR-09): a status change is recorded with its author, date and comment.
+
+    The assignee can change with or without a status change (it is not part of the status history).
+    Returns what changed, for the confirmation message. Raises ValueError when nothing changes.
+    """
+    changes = []
+    with transaction.atomic():
+        alert = Alert.objects.select_for_update().get(pk=alert.pk)
+        if new_status != alert.status:
+            AlertStatusChange.objects.create(alert=alert, old_status=alert.status, new_status=new_status,
+                                             comment=comment.strip(), changed_by=user)
+            changes.append(f"status {AlertStatus(alert.status).label} → {AlertStatus(new_status).label}")
+            alert.status = new_status
+        elif comment.strip():
+            raise ValueError("A comment is saved with a status change. Change the status, or clear the comment.")
+        if assignee != alert.assignee:
+            changes.append(f"assigned to {assignee.get_username()}" if assignee else "unassigned")
+            alert.assignee = assignee
+        if not changes:
+            raise ValueError("Nothing changed: choose another status or another assignee.")
+        alert.save(update_fields=["status", "assignee"])
+    return changes

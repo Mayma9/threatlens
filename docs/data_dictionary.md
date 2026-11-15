@@ -108,7 +108,7 @@ Unique together: (`raw_vendor`, `raw_product`): a raw name designates one produc
 | `watchlist_item_id` | FK → `watchlist_watchlistitem` | The watched product (and so the organization) |
 | `created_at` | timestamptz | Creation by the alert step of the pipeline |
 | `status` | varchar | NEW, IN_PROGRESS, FIXED, RISK_ACCEPTED, FALSE_POSITIVE (open = NEW or IN_PROGRESS) |
-| `priority_score` | float | 0 until the prioritization is computed (US11, FR-10) |
+| `priority_score` | float 0–100 | Weighted mean of severity, EPSS, KEV and product criticality (FR-10, weights in `settings.PRIORITY_WEIGHTS`, see the README); recomputed for open alerts at each run, frozen when the alert is closed |
 | `due_date` | date | Creation date + `ALERT_DUE_DAYS[effective severity]` (CRITICAL 7, HIGH 30, MEDIUM 90, LOW 180, no score 30 days); CISA's KEV due date when it is earlier |
 | `assignee_id` | FK → `accounts_user`, null | Analyst in charge (US11) |
 
@@ -121,7 +121,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 |---|---|---|
 | `alert_id` | FK → `alerts_alert` | |
 | `old_status`, `new_status` | varchar | Empty old status = creation |
-| `comment` | text | e.g. "Created by pipeline run 12." |
+| `comment` | text | e.g. "Created by pipeline run 12."; written by the analyst with a status change (US11) |
 | `changed_at` | timestamptz | |
 | `changed_by_id` | FK → `accounts_user`, null | Empty = the system (pipeline) |
 

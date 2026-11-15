@@ -132,3 +132,12 @@ DEMO_USER_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "")
 # Alerts (US08): days given to fix a new alert, by effective severity of the CVE.
 # CISA's KEV due date is kept when it is earlier. Rule proposed by the team, to adjust if needed.
 ALERT_DUE_DAYS = {"CRITICAL": 7, "HIGH": 30, "MEDIUM": 90, "LOW": 180, "UNKNOWN": 30}
+
+# Priority score of an alert, 0-100 (FR-10, US11). Weighted mean of four factors between 0 and 1:
+#   severity     = effective CVSS score / 10 (PRIORITY_UNSCORED_SEVERITY when the CVE has no score)
+#   exploitation = EPSS score (probability of exploitation in the next 30 days)
+#   kev          = 1 when the CVE is in the CISA KEV catalog, else 0
+#   criticality  = (criticality of the watched product - 1) / 3, criticality 1 (low) to 4 (critical)
+# Team decision (Sprint 3): 35 / 25 / 25 / 15. After a change, run: python manage.py refresh_priorities
+PRIORITY_WEIGHTS = {"severity": 0.35, "exploitation": 0.25, "kev": 0.25, "criticality": 0.15}
+PRIORITY_UNSCORED_SEVERITY = 0.5  # neutral until the severity predicted by model M1 is available

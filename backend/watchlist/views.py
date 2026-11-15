@@ -16,6 +16,7 @@ from django.views import View
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 from alerts.models import OPEN_STATUSES
+from alerts.priority import refresh_priority_scores
 
 from .forms import AliasForm, CriticalityForm, WatchlistItemForm
 from .matching import affected_cve_count, unmatched_names
@@ -96,6 +97,7 @@ class WatchlistItemView(WatchlistAccessMixin, View):
             criticality_form = CriticalityForm(request.POST, instance=item)
             if criticality_form.is_valid():
                 criticality_form.save()
+                refresh_priority_scores(item.alerts.all())  # criticality is one of the priority factors (FR-10)
                 messages.success(request, f"Criticality of {item.product} set to {item.get_criticality_display()}.")
                 return redirect("watchlist:item", pk=item.pk)
             messages.error(request, form_error_message(criticality_form), extra_tags="Not saved")

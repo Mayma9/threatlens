@@ -7,6 +7,7 @@ import traceback
 from django.utils import timezone
 
 from alerts.models import AlertGeneration
+from alerts.priority import refresh_priority_scores
 from alerts.services import cve_watermark, generate_alerts
 from cti.models import Vulnerability
 from cti.services import refresh_effective_severity
@@ -77,12 +78,14 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
 
 
 def _generate_alerts(run, watermark, stdout=None) -> bool:
-    """Alert step (FR-08), after loading: new or updated CVEs of this run against every watchlist."""
+    """Alert step (FR-08, FR-10), after loading: new or updated CVEs of this run against every watchlist,
+    then the priority score of every open alert (EPSS, KEV and severity change at each run)."""
     new_or_updated = Vulnerability.objects.all()
     if watermark:
         new_or_updated = new_or_updated.filter(source_updated_at__gt=watermark)
     try:
         result = generate_alerts(new_or_updated, run=run)
+        scored = refresh_priority_scores()
     except Exception as exc:  # noqa: BLE001 - logged, the loaded data stays valid
         AlertGeneration.objects.create(run=run, error_message=f"{type(exc).__name__}: {exc}\n\n{traceback.format_exc(limit=5)}")
         if stdout:
@@ -91,7 +94,7 @@ def _generate_alerts(run, watermark, stdout=None) -> bool:
     if stdout:
         stdout.write(
             f"alerts: {result.alerts_created} created for {result.cves_checked} new or updated CVEs, "
-            f"{len(result.unmatched_names)} unmatched names to review"
+            f"{len(result.unmatched_names)} unmatched names to review, priority of {scored} open alerts refreshed"
         )
     return True
 
