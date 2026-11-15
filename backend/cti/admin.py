@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from .models import AffectedProduct, CVSSMetric, KEVEntry, Product, Vulnerability, VulnerabilityWeakness, Weakness
+from .models import (
+    AffectedProduct,
+    CVSSMetric,
+    Indicator,
+    KEVEntry,
+    Malware,
+    Product,
+    Vulnerability,
+    VulnerabilityWeakness,
+    Weakness,
+)
 
 
 class CVSSMetricInline(admin.TabularInline):
@@ -58,3 +68,28 @@ class WeaknessAdmin(admin.ModelAdmin):
     list_display = ("cwe_id", "name", "kind", "abstraction", "status")
     list_filter = ("kind", "abstraction", "status")
     search_fields = ("cwe_id", "name")
+
+
+@admin.register(Malware)
+class MalwareAdmin(admin.ModelAdmin):
+    list_display = ("name", "malpedia_id", "category")
+    list_filter = ("category",)
+    search_fields = ("name", "malpedia_id")
+
+
+@admin.register(Indicator)
+class IndicatorAdmin(admin.ModelAdmin):
+    """IOC values are shown as plain text, never as links (risk R9). Read-only: they come from ThreatFox."""
+
+    list_display = ("threatfox_id", "ioc_type", "value", "threat_type", "malware", "confidence", "first_seen")
+    list_filter = ("ioc_type", "threat_type")
+    search_fields = ("value", "malware__name")
+    date_hierarchy = "first_seen"
+    raw_id_fields = ("malware",)
+    show_full_result_count = False
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

@@ -75,6 +75,28 @@ Unique: (`vulnerability`, `provider`, `version`). CISA ADP SSVC exploitation fie
 | `vulnerability_id`, `weakness_id` | FK | `problemTypes[].descriptions[].cweId` | CWE named by the CVE record |
 | `provider` | varchar(10) | container | `CNA` or `CISA_ADP` (cve connector), `NVD` (NVD weaknesses of type *Primary*); unique with the two FKs |
 
+### `cti_malware` — malware families named by ThreatFox
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `malpedia_id` | varchar(100), unique | `malware` | Malpedia name, e.g. `win.cobalt_strike`; `unknown` is not stored |
+| `name` | varchar(200) | `malware_printable` | Display name, e.g. `Cobalt Strike` |
+| `category` | varchar(50) | prefix of `malware` | Target platform: `win` → Windows, `elf` → Linux, `apk` → Android, `osx` → macOS…; `Other` otherwise |
+
+### `cti_indicator` — indicators of compromise (abuse.ch ThreatFox)
+
+IOC values are data only: never visited, resolved or shown as links (risk R9). Read-only in the admin.
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `threatfox_id` | bigint, unique | `id` | ThreatFox identifier (key of the upsert) |
+| `value` | text | `ioc` | The indicator: `ip:port`, domain, URL or file hash |
+| `ioc_type` | varchar(50) | `ioc_type` | `ip:port`, `domain`, `url`, `md5_hash`, `sha256_hash`… |
+| `threat_type` | varchar(50) | `threat_type` | `botnet_cc`, `payload_delivery`, `payload`… |
+| `malware_id` | FK, null | `malware` | Malware family; empty when ThreatFox gives `unknown` |
+| `confidence` | smallint 0–100 | `confidence_level` | Confidence given by the reporter |
+| `first_seen`, `last_seen` | timestamptz | `first_seen`, `last_seen` | UTC; `last_seen` is often empty |
+
 ## Watchlist (`watchlist` app)
 
 ### `watchlist_watchlistitem` — a product watched by an organization (US07, FR-07)
@@ -140,7 +162,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 
 | Column | Description |
 |---|---|
-| `name` | Connector key (`cwe`, `cve`, `nvd`, `kev`, `epss`), unique |
+| `name` | Connector key (`cwe`, `cve`, `nvd`, `kev`, `epss`, `threatfox`), unique |
 | `label`, `url` | Display name and reference URL |
 | `frequency` | Update frequency (default `daily`) |
 | `is_active` | Disabled sources are skipped by `run_pipeline` (FR-15) |
@@ -181,6 +203,12 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 | NVD | only data of type *Primary* (NIST); `NVD-CWE-Other` / `NVD-CWE-noinfo` ignored | CNA data comes from CVE List V5 |
 | NVD | same CVE in two overlapping windows | last one kept (counted) |
 | NVD | CPE prefix only for an affected product of the same CVE with exactly the same vendor and product | otherwise not used (counted: `cpes_not_matched`) |
+| ThreatFox | `id` is a number | otherwise rejected |
+| ThreatFox | IOC value, IOC type and threat type present | otherwise rejected |
+| ThreatFox | `confidence_level` between 0 and 100 | otherwise rejected |
+| ThreatFox | `first_seen` is a valid date | otherwise rejected |
+| ThreatFox | IOC once in the file | duplicates rejected |
+| ThreatFox | malware `unknown` | IOC kept without family (counted: `without_malware_family`) |
 | CWE | identifier is a number | otherwise rejected |
 | CWE | name present | otherwise rejected |
 | CWE | CWE once in the catalog | duplicates rejected |
