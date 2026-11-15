@@ -7,5 +7,6 @@ urlpatterns = [
     path("vulnerabilities/", include("cti.urls")),
     path("watchlist/", include("watchlist.urls")),
     path("alerts/", include("alerts.urls")),
+    path("plans/", include("alerts.plan_urls")),
     path("", include("accounts.urls")),
 ]

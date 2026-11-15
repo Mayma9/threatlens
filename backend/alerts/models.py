@@ -1,4 +1,5 @@
-"""Alerts on watched products (US08, FR-08, FR-09) and their status history (class diagram 9.3)."""
+"""Alerts on watched products (US08, FR-08, FR-09), their status history and the weekly
+remediation plan validated by the CISO (US13, FR-12) (class diagram 9.3)."""
 
 from django.conf import settings
 from django.db import models
@@ -16,6 +17,48 @@ class AlertStatus(models.TextChoices):
 OPEN_STATUSES = [AlertStatus.NEW, AlertStatus.IN_PROGRESS]
 
 
+class PlanStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    SUBMITTED = "SUBMITTED", "Waiting for approval"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED", "Changes requested"
+    APPROVED = "APPROVED", "Approved"
+
+
+EDITABLE_PLAN_STATUSES = [PlanStatus.DRAFT, PlanStatus.CHANGES_REQUESTED]
+
+
+class RemediationPlan(models.Model):
+    """Weekly remediation plan (FR-12): open alerts selected by an analyst, approved by the CISO.
+
+    Workflow: DRAFT -> SUBMITTED -> APPROVED, or SUBMITTED -> CHANGES_REQUESTED -> SUBMITTED again.
+    """
+
+    organization = models.ForeignKey("accounts.Organization", on_delete=models.CASCADE, related_name="plans")
+    period_start = models.DateField()  # Monday of the week
+    period_end = models.DateField()  # Sunday of the week
+    status = models.CharField(max_length=20, choices=PlanStatus.choices, default=PlanStatus.DRAFT)
+    prepared_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="prepared_plans")
+    created_at = models.DateTimeField(default=timezone.now)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    validated_at = models.DateTimeField(null=True, blank=True)  # approval date
+    validated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+                                     related_name="validated_plans")  # approver (CISO)
+    ciso_comment = models.TextField(blank=True)  # approval note or requested changes
+
+    class Meta:
+        ordering = ["-period_start"]
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "period_start"], name="uniq_plan_organization_week"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Remediation plan {self.period_start:%d %b} - {self.period_end:%d %b %Y} ({self.organization})"
+
+    @property
+    def is_editable(self) -> bool:
+        return self.status in EDITABLE_PLAN_STATUSES
+
+
 class Alert(models.Model):
     """A vulnerability that affects a watched product: one alert per CVE and watchlist item."""
 
@@ -28,6 +71,8 @@ class Alert(models.Model):
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_alerts"
     )
+    plan = models.ForeignKey(RemediationPlan, on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name="alerts")  # the weekly plan that schedules its remediation (FR-12)
 
     class Meta:
         ordering = ["-priority_score", "due_date"]
