@@ -134,10 +134,16 @@ DEMO_USER_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "")
 ALERT_DUE_DAYS = {"CRITICAL": 7, "HIGH": 30, "MEDIUM": 90, "LOW": 180, "UNKNOWN": 30}
 
 # Priority score of an alert, 0-100 (FR-10, US11). Weighted mean of four factors between 0 and 1:
-#   severity     = effective CVSS score / 10 (PRIORITY_UNSCORED_SEVERITY when the CVE has no score)
+#   severity     = effective CVSS score / 10; for a severity predicted by M1, the middle of the CVSS range
+#                  of the class (PRIORITY_PREDICTED_SEVERITY); PRIORITY_UNSCORED_SEVERITY with no score at all
 #   exploitation = EPSS score (probability of exploitation in the next 30 days)
 #   kev          = 1 when the CVE is in the CISA KEV catalog, else 0
 #   criticality  = (criticality of the watched product - 1) / 3, criticality 1 (low) to 4 (critical)
 # Team decision (Sprint 3): 35 / 25 / 25 / 15. After a change, run: python manage.py refresh_priorities
 PRIORITY_WEIGHTS = {"severity": 0.35, "exploitation": 0.25, "kev": 0.25, "criticality": 0.15}
-PRIORITY_UNSCORED_SEVERITY = 0.5  # neutral until the severity predicted by model M1 is available
+PRIORITY_UNSCORED_SEVERITY = 0.5  # neutral: no CVSS score and no prediction
+# Team decision (Sprint 3): middle of the CVSS 3.x range of the predicted class, divided by 10
+PRIORITY_PREDICTED_SEVERITY = {"LOW": 0.2, "MEDIUM": 0.55, "HIGH": 0.8, "CRITICAL": 0.95}
+
+# Machine learning (FR-26): trained model files (git-ignored); their versions and metrics are in ml_mlmodel
+ML_MODELS_DIR = Path(os.environ.get("ML_MODELS_DIR", REPO_DIR / "ml" / "models"))

@@ -180,6 +180,8 @@ a.tl-product:hover .tl-product__name { color: var(--tl-cyan); }
 .tl-sev--high { --tl-sev-color: var(--tl-amber); }
 .tl-sev--medium { --tl-sev-color: var(--tl-cyan); }
 .tl-sev--unscored { border-style: dashed; font-weight: 500; }
+.tl-sev--predicted { border-style: dotted; background: transparent; font-style: italic; }
+.tl-prediction { border-top: 1px solid var(--tl-line); }
 a.tl-cve__id { text-decoration: none; }
 a.tl-cve__id:hover { color: var(--tl-cyan); }
 

@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS dw.fact_vulnerability (
     is_kev               boolean  NOT NULL,
     days_to_kev          integer,                                -- KEV date minus publication date
     exploit_probability  double precision CHECK (exploit_probability BETWEEN 0 AND 1),  -- M2, Sprint 3
-    is_severity_predicted boolean NOT NULL DEFAULT false,        -- M1, Sprint 3
+    is_severity_predicted boolean NOT NULL DEFAULT false,        -- true: severity predicted by M1
     PRIMARY KEY (vuln_key, product_key)
 );
 

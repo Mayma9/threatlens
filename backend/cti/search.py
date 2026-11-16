@@ -36,8 +36,8 @@ def search(filters: dict):
         queryset = queryset.filter(id__in=affected)
 
     severity = filters.get("severity")
-    if severity == NO_SCORE:
-        queryset = queryset.filter(effective_severity="")
+    if severity == NO_SCORE:  # no CVSS score, with or without a severity predicted by M1
+        queryset = queryset.filter(effective_score__isnull=True)
     elif severity:
         queryset = queryset.filter(effective_severity=severity)
 

@@ -1,7 +1,7 @@
 """Priority score of the alerts (FR-10, US11): a weighted mean of four factors, from 0 to 100.
 
-The weights and the value used for a CVE without CVSS score are in settings.py
-(PRIORITY_WEIGHTS, PRIORITY_UNSCORED_SEVERITY). The same function computes the score and
+The weights and the values used for a CVE without CVSS score are in settings.py
+(PRIORITY_WEIGHTS, PRIORITY_PREDICTED_SEVERITY, PRIORITY_UNSCORED_SEVERITY). The same function computes the score and
 explains it on the alert page, so what the analyst reads is exactly what sorts the list.
 """
 
@@ -33,7 +33,11 @@ def factors(vulnerability, criticality: int) -> list[Factor]:
     weight = {key: value / total for key, value in raw.items()}
 
     score = vulnerability.effective_score
-    if score is None:
+    predicted = vulnerability.is_severity_predicted and vulnerability.effective_severity
+    if predicted:
+        severity = settings.PRIORITY_PREDICTED_SEVERITY[predicted]
+        severity_shown = f"{predicted} predicted by M1 (middle of the class)"
+    elif score is None:
         severity = settings.PRIORITY_UNSCORED_SEVERITY
         severity_shown = "No CVSS score yet (neutral value)"
     else:

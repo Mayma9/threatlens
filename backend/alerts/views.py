@@ -55,7 +55,7 @@ class AlertListView(AlertAccessMixin, View):
             if data["item"]:
                 alerts = alerts.filter(watchlist_item_id=data["item"])
             if data["severity"] == NO_SCORE:
-                alerts = alerts.filter(vulnerability__effective_severity="")
+                alerts = alerts.filter(vulnerability__effective_score__isnull=True)
             elif data["severity"]:
                 alerts = alerts.filter(vulnerability__effective_severity=data["severity"])
             if data["kev"] == "yes":

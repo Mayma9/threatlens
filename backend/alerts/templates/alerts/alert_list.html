@@ -58,9 +58,7 @@
           <td class="d-none d-md-table-cell"><span class="tl-product"><span class="tl-product__vendor">{{ alert.watchlist_item.product.vendor }}</span>
             <span class="tl-product__name">{{ alert.watchlist_item.product.name }}</span></span></td>
           <td class="text-nowrap">
-            {% if vulnerability.effective_severity %}
-            <span class="tl-sev tl-sev--{{ vulnerability.effective_severity|lower }}">{{ vulnerability.get_effective_severity_display }}{% if vulnerability.effective_score is not None %} {{ vulnerability.effective_score|floatformat:1 }}{% endif %}</span>
-            {% else %}<span class="tl-sev tl-sev--unscored">No score yet</span>{% endif %}
+            {% include "cti/_severity.html" %}
           </td>
           <td class="d-none d-lg-table-cell small">{% if vulnerability.epss_score is not None %}{{ vulnerability.epss_score|floatformat:4 }}{% else %}<span class="tl-muted">—</span>{% endif %}</td>
           <td><span class="tl-status tl-status--{{ alert.status|lower }}">{{ alert.get_status_display }}</span></td>

@@ -5,7 +5,7 @@ from .search import NO_SCORE
 
 SEVERITY_CHOICES = [("", "Any severity")] + [
     (value, label) for value, label in Severity.choices if value != Severity.NONE
-] + [(Severity.NONE, "None (score 0)"), (NO_SCORE, "No score yet")]
+] + [(Severity.NONE, "None (score 0)"), (NO_SCORE, "No CVSS score yet")]
 KEV_CHOICES = [("", "Any"), ("yes", "Exploited (in KEV)"), ("no", "Not in KEV")]
 
 
