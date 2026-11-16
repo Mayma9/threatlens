@@ -1,0 +1,187 @@
+{
+  "macro_f1": 0.571,
+  "accuracy": 0.673,
+  "right_or_one_class_away": 0.968,
+  "f1_by_class": {
+    "LOW": 0.371,
+    "MEDIUM": 0.73,
+    "HIGH": 0.677,
+    "CRITICAL": 0.507
+  },
+  "confusion_matrix": {
+    "classes": [
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "CRITICAL"
+    ],
+    "counts": [
+      [
+        1283,
+        2809,
+        650,
+        104
+      ],
+      [
+        686,
+        35710,
+        9598,
+        1478
+      ],
+      [
+        97,
+        10618,
+        31336,
+        4469
+      ],
+      [
+        5,
+        1214,
+        4460,
+        6036
+      ]
+    ]
+  },
+  "target_macro_f1": 0.7,
+  "meets_target": false,
+  "reference_text_only": {
+    "macro_f1": 0.501,
+    "accuracy": 0.584,
+    "right_or_one_class_away": 0.93
+  },
+  "by_scorer": {
+    "scored by the CNA": {
+      "cves": 81405,
+      "macro_f1": 0.587,
+      "accuracy": 0.683
+    },
+    "not scored by the CNA": {
+      "cves": 29148,
+      "macro_f1": 0.482,
+      "accuracy": 0.645
+    },
+    "label of CISA ADP": {
+      "cves": 19405,
+      "macro_f1": 0.457,
+      "accuracy": 0.61
+    },
+    "label of the NVD": {
+      "cves": 9743,
+      "macro_f1": 0.545,
+      "accuracy": 0.716
+    }
+  },
+  "by_confidence": [
+    {
+      "share": 1.0,
+      "min_confidence": 0.32,
+      "macro_f1": 0.571,
+      "accuracy": 0.673
+    },
+    {
+      "share": 0.8,
+      "min_confidence": 0.54,
+      "macro_f1": 0.628,
+      "accuracy": 0.727
+    },
+    {
+      "share": 0.6,
+      "min_confidence": 0.66,
+      "macro_f1": 0.696,
+      "accuracy": 0.786
+    },
+    {
+      "share": 0.4,
+      "min_confidence": 0.8,
+      "macro_f1": 0.778,
+      "accuracy": 0.852
+    }
+  ],
+  "features": [
+    "description",
+    "title",
+    "products",
+    "cwes",
+    "assigner",
+    "scorer",
+    "scorer_words"
+  ],
+  "C": 2.0,
+  "metric_weight": 0.7,
+  "validation_macro_f1_by_metric_weight": {
+    "0.0": 0.616,
+    "0.5": 0.65,
+    "0.7": 0.656,
+    "1.0": 0.636
+  },
+  "label": "CVSS 3.x severity of the CNA, else of CISA ADP, else of the NVD",
+  "periods": {
+    "fit": "2018-01-01 to 2024-07-01",
+    "validation": "2024-07-01 to 2025-07-01",
+    "test": "2025-07-01 to 2026-11-14",
+    "deployed_fit": "2018-01-01 to 2026-11-14"
+  },
+  "sizes": {
+    "fit": 146500,
+    "validation": 42288,
+    "test": 110553,
+    "deployed_fit": 299341,
+    "deployed_fit_rows": 372839
+  },
+  "trained_on": "2026-11-16",
+  "retrained_each_quarter": {
+    "macro_f1": 0.605,
+    "accuracy": 0.699,
+    "right_or_one_class_away": 0.971,
+    "f1_by_class": {
+      "LOW": 0.43,
+      "MEDIUM": 0.748,
+      "HIGH": 0.711,
+      "CRITICAL": 0.532
+    },
+    "quarters": [
+      {
+        "from": "2025-07-01",
+        "trained_on": 188788,
+        "cves": 11037,
+        "macro_f1": 0.664,
+        "accuracy": 0.725
+      },
+      {
+        "from": "2025-10-01",
+        "trained_on": 199825,
+        "cves": 11350,
+        "macro_f1": 0.642,
+        "accuracy": 0.741
+      },
+      {
+        "from": "2026-01-01",
+        "trained_on": 211175,
+        "cves": 14596,
+        "macro_f1": 0.625,
+        "accuracy": 0.705
+      },
+      {
+        "from": "2026-04-01",
+        "trained_on": 225771,
+        "cves": 19622,
+        "macro_f1": 0.581,
+        "accuracy": 0.68
+      },
+      {
+        "from": "2026-07-01",
+        "trained_on": 245393,
+        "cves": 32244,
+        "macro_f1": 0.579,
+        "accuracy": 0.684
+      },
+      {
+        "from": "2026-10-01",
+        "trained_on": 277637,
+        "cves": 21704,
+        "macro_f1": 0.585,
+        "accuracy": 0.7
+      }
+    ]
+  }
+}

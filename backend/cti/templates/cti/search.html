@@ -48,11 +48,7 @@
             <p class="tl-cve__text mb-0">{{ vulnerability.description|truncatechars:170 }}</p>
           </td>
           <td class="text-nowrap">
-            {% if vulnerability.effective_severity %}
-            <span class="tl-sev tl-sev--{{ vulnerability.effective_severity|lower }}">{{ vulnerability.get_effective_severity_display }}{% if vulnerability.effective_score is not None %} {{ vulnerability.effective_score|floatformat:1 }}{% endif %}</span>
-            {% else %}
-            <span class="tl-sev tl-sev--unscored">No score yet</span>
-            {% endif %}
+            {% include "cti/_severity.html" %}
           </td>
           <td class="d-none d-lg-table-cell small">
             {% for affected in vulnerability.affected_products.all|slice:":2" %}

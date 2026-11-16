@@ -23,14 +23,20 @@ class Vulnerability(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     # dateUpdated of the CVE record: watermark for incremental loads
     source_updated_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Short name of the CNA that published the record (cveMetadata.assignerShortName), e.g. "fortinet"
+    assigner = models.CharField(max_length=64, blank=True)
+    # Title given by the CNA (containers.cna.title), when there is one: a feature of model M1
+    title = models.CharField(max_length=300, blank=True)
     nvd_status = models.CharField(max_length=32, blank=True)  # NVD connector (Sprint 2)
     epss_score = models.FloatField(null=True, blank=True)  # EPSS connector (Sprint 2)
     epss_percentile = models.FloatField(null=True, blank=True)
-    # Effective severity (FR-06), copied from the CVSS scores after each pipeline run
-    # (cti.services.refresh_effective_severity) so that searches can filter on it quickly.
-    # Empty = no CVSS score yet (the ML prediction will fill this case in Sprint 3).
+    # Effective severity (FR-06), copied after each pipeline run (cti.services.refresh_effective_severity)
+    # so that searches can filter on it quickly: the CVSS score of NVD > CNA > CISA ADP, else the severity
+    # predicted by the active M1 model (is_severity_predicted = True, effective_score empty).
+    # Empty = no CVSS score and no prediction.
     effective_severity = models.CharField(max_length=10, choices=Severity.choices, blank=True, db_index=True)
     effective_score = models.FloatField(null=True, blank=True)
+    is_severity_predicted = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-published_at"]
@@ -50,7 +56,7 @@ class Vulnerability(models.Model):
     def effective_metric(self):
         """CVSS score used as the effective severity (FR-06): the first of ordered_metrics().
 
-        Returns None when no score exists (the ML prediction will fill this case in Sprint 3).
+        Returns None when no score exists (the severity predicted by M1 is then used, see is_severity_predicted).
         """
         metrics = self.ordered_metrics()
         return metrics[0] if metrics else None

@@ -10,12 +10,9 @@
 
 <h1 class="tl-page-title">{{ vulnerability.cve_id }}{% if kev %} <span class="tl-kev align-middle">Exploited</span>{% endif %}</h1>
 <p class="tl-muted mb-0">
-  {% if vulnerability.effective_severity %}
-  <span class="tl-sev tl-sev--{{ vulnerability.effective_severity|lower }}">{{ vulnerability.get_effective_severity_display }}{% if vulnerability.effective_score is not None %} {{ vulnerability.effective_score|floatformat:1 }}{% endif %}</span>
-  {% if effective %}<span class="ms-1">effective severity, from the {{ effective.get_provider_display }} CVSS {{ effective.version }} score</span>{% endif %}
-  {% else %}
-  <span class="tl-sev tl-sev--unscored">No score yet</span>
-  {% endif %}
+  {% include "cti/_severity.html" %}
+  {% if effective %}<span class="ms-1">effective severity, from the {{ effective.get_provider_display }} CVSS {{ effective.version }} score</span>
+  {% elif vulnerability.is_severity_predicted and prediction %}<span class="ms-1">effective severity, predicted by {{ prediction.model }}: no CVSS score yet</span>{% endif %}
   <span class="ms-3">Published {{ vulnerability.published_at|date:"d M Y"|default:"date unknown" }}</span>
   {% if vulnerability.source_updated_at %}<span class="ms-3">Updated {{ vulnerability.source_updated_at|date:"d M Y" }}</span>{% endif %}
   {% if vulnerability.nvd_status %}<span class="ms-3">NVD status: {{ vulnerability.nvd_status }}</span>{% endif %}
@@ -58,7 +55,7 @@
   <div class="col-lg-8">
     <section class="tl-panel overflow-hidden h-100">
       <h2 class="h6 px-4 pt-4 mb-1">CVSS scores</h2>
-      <p class="small tl-muted px-4">The effective severity uses the first score: NVD, then the CNA, then CISA ADP, newest CVSS version first.</p>
+      <p class="small tl-muted px-4">The effective severity uses the first score: NVD, then the CNA, then CISA ADP, newest CVSS version first. Without any score, it is the severity predicted by model M1.</p>
       {% if metrics %}
       <div class="table-responsive">
         <table class="table tl-table align-middle mb-0">
@@ -84,6 +81,16 @@
       </div>
       {% else %}
       <p class="px-4 pb-4 mb-0 tl-muted">No CVSS score published yet by NVD, the CNA or CISA ADP.</p>
+      {% endif %}
+      {% if prediction %}
+      <div class="tl-prediction px-4 py-3">
+        <h3 class="tl-label">Machine learning prediction</h3>
+        <p class="mb-0">
+          <span class="tl-sev tl-sev--{{ prediction.predicted_severity|lower }} tl-sev--predicted">{{ prediction.get_predicted_severity_display }} · predicted</span>
+          <span class="ms-1">confidence {% widthratio prediction.confidence 1 100 %} %, model {{ prediction.model }}, {{ prediction.created_at|date:"d M Y" }}</span>
+        </p>
+        <p class="small tl-muted mb-0 mt-1">Predicted from the description, affected products, CWE and CNA of the record{% if metrics %}, before a CVSS score was published{% endif %}.</p>
+      </div>
       {% endif %}
     </section>
   </div>

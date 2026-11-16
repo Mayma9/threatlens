@@ -41,7 +41,7 @@ class VulnerabilitySearchView(RoleRequiredMixin, View):
 
 
 class VulnerabilityDetailView(RoleRequiredMixin, View):
-    """Enriched CVE record (US04, FR-05): description, every CVSS score, effective severity, EPSS, KEV and CWE."""
+    """Enriched CVE record (US04, FR-05): description, every CVSS score, effective severity, EPSS, KEV, CWE, M1 prediction."""
 
     allowed_roles = [Role.ANALYST]
     template_name = "cti/detail.html"
@@ -69,6 +69,8 @@ class VulnerabilityDetailView(RoleRequiredMixin, View):
             "kev": getattr(vulnerability, "kev_entry", None),
             "metrics": metrics,
             "effective": metrics[0] if metrics else None,  # FR-06
+            # Latest prediction of the active M1 version (FR-05), used when there is no CVSS score
+            "prediction": vulnerability.severitypredictions.filter(model__is_active=True).select_related("model").first(),
             "weaknesses": vulnerability.ordered_weaknesses(),
             "affected": vulnerability.affected_products.all(),
             # EPSS values are probabilities (0-1), shown as percentages

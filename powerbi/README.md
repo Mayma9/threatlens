@@ -65,7 +65,7 @@ Model settings:
 -- in fact_vulnerability
 CVEs = DISTINCTCOUNT ( fact_vulnerability[vuln_key] )
 New CVEs (30 days) = CALCULATE ( [CVEs], dim_date[full_date] > TODAY () - 30 )
-CVEs without CVSS = CALCULATE ( [CVEs], dim_severity[label] = "NO_SCORE" )
+CVEs without CVSS = CALCULATE ( [CVEs], FILTER ( ALL ( fact_vulnerability[cvss_score] ), ISBLANK ( fact_vulnerability[cvss_score] ) ) )
 % without CVSS = DIVIDE ( [CVEs without CVSS], [CVEs] )
 KEV CVEs = CALCULATE ( [CVEs], fact_vulnerability[is_kev] = TRUE () )
 % KEV = DIVIDE ( [KEV CVEs], [CVEs] )
@@ -126,7 +126,7 @@ SQL
 | KPI (FR-22) | Definition | Measure | Source |
 |---|---|---|---|
 | New CVEs per period | Distinct CVEs by publication date (day, month, quarter, year) | `CVEs` with the **Calendar** hierarchy; `New CVEs (30 days)` | `fact_vulnerability`, `dim_date` (published) |
-| Share of CVEs without any CVSS score | CVEs whose effective severity is `NO_SCORE` / all CVEs | `% without CVSS` | `fact_vulnerability`, `dim_severity` |
+| Share of CVEs without any CVSS score | CVEs with an empty `cvss_score` / all CVEs (with or without a severity predicted by M1) | `% without CVSS` | `fact_vulnerability` |
 | KEV vulnerabilities affecting the watchlist | Distinct KEV CVEs with an alert on a watched product (product names and aliases) | `Watchlist KEV CVEs` | `fact_alert` |
 | Delay between publication and KEV addition | Median of `days_to_kev` over distinct KEV CVEs (the median, because CVEs added when the catalog started in 2021 are years old) | `Median days to KEV`, `Median days to KEV by date added` | `fact_vulnerability`, `dim_date` (KEV added) |
 | Open alerts by priority and status, mean time to remediate, overdue alerts | Sprint 3 (US12) | | `fact_alert` |
