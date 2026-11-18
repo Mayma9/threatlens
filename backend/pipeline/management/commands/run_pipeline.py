@@ -4,6 +4,7 @@
     python manage.py run_pipeline --source cve       # one source
     python manage.py run_pipeline --source cve --file data/staging/manual.zip   # local file instead of a download
     python manage.py run_pipeline --full             # ignore the incremental watermark
+    python manage.py run_pipeline --scheduled        # scheduler: skip the sources that are not due (their frequency)
 """
 
 from django.contrib.auth import get_user_model
@@ -22,6 +23,11 @@ class Command(BaseCommand):
         parser.add_argument("--file", help="local snapshot to load instead of downloading (one source only)")
         parser.add_argument("--full", action="store_true", help="reload every record, not only the new ones")
         parser.add_argument("--triggered-by", help="username of the administrator who starts the run")
+        parser.add_argument(
+            "--scheduled",
+            action="store_true",
+            help="skip the sources whose last successful run is younger than their frequency (used by the scheduler)",
+        )
 
     def handle(self, *args, **options):
         if options["file"] and len(options["source"] or []) != 1:
@@ -36,6 +42,7 @@ class Command(BaseCommand):
             sources=options["source"],
             local_file=options["file"],
             full=options["full"],
+            scheduled=options["scheduled"],
             triggered_by=user,
             stdout=self.stdout,
         )
