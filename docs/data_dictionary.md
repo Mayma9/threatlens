@@ -164,7 +164,7 @@ Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for
 |---|---|
 | `name` | Connector key (`cwe`, `cve`, `nvd`, `kev`, `epss`, `threatfox`), unique |
 | `label`, `url` | Display name and reference URL |
-| `frequency` | Update frequency (default `daily`) |
+| `frequency` | `hourly`, `daily` (default) or `weekly`: a scheduled run (`run_pipeline --scheduled`) skips the source until 90 % of this delay has passed since its last successful task; an unknown value counts as `daily` (FR-15) |
 | `is_active` | Disabled sources are skipped by `run_pipeline` (FR-15) |
 
 ### `pipeline_pipelinerun` — one row per run

@@ -145,6 +145,9 @@ docker compose run --rm etl                                              # every
 | `--file PATH` | load a local snapshot instead of downloading (one source only) |
 | `--full` | reload every record, not only those updated since the last load (`cve`, `nvd`) |
 | `--triggered-by USERNAME` | record the administrator who started the run |
+| `--scheduled` | scheduler mode (used by `scripts\run_pipeline.bat`): skip the sources whose last successful run is younger than their frequency (`hourly`, `daily`, `weekly`); without this option every selected source runs |
+
+**Frequency (FR-15).** The administrator sets the frequency of each source in the admin (*Sources*: `hourly`, `daily` or `weekly`, `daily` by default) or disables it. The daily Windows task (`scripts\run_pipeline.bat`) runs `run_pipeline --scheduled`: a source runs again only when 90 % of its delay has passed since its last successful run (a failed run does not count, an unknown value counts as `daily`). Keep `threatfox` on `daily`, because its API only returns the last 7 days.
 
 **NVD (US05).** The API key `NVD_API_KEY` of `.env` raises the limit from 5 to 50 requests per 30 seconds. Only the NVD's own data is kept (CVSS scores and CWEs of type *Primary*, status `vulnStatus`, and the CPE prefix of the products whose names match the NVD CPE exactly); since April 2026 NIST no longer scores every CVE, the quality report counts them (`without_nvd_score`). After the first load, each run reads only the CVEs modified since the previous successful run.
 
