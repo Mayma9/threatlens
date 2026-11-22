@@ -48,3 +48,14 @@ class StatusChangeForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["assignee"].queryset = assignable_users(organization)
         self.fields["assignee"].label_from_instance = lambda user: f"{user.get_username()} ({user.get_role_display()})"
+
+
+class PlanCreateForm(forms.Form):
+    week = forms.DateField(label="Week of", widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+                           help_text="Any day of the week: the plan runs from Monday to Sunday.")
+
+
+class PlanReviewForm(forms.Form):
+    comment = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(
+        attrs={"class": "form-control", "rows": 3,
+               "placeholder": "Required to request changes, e.g. add the KEV alerts on pan-os first"}))

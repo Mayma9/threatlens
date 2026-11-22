@@ -1,0 +1,155 @@
+{% extends "accounts/base.html" %}
+{% block title %}Plan {{ plan.period_start|date:"d M Y" }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb tl-breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'plans:list' %}">Remediation plans</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Week of {{ plan.period_start|date:"d M Y" }}</li>
+  </ol>
+</nav>
+
+<h1 class="tl-page-title">Plan {{ plan.period_start|date:"d M" }} – {{ plan.period_end|date:"d M Y" }}</h1>
+<p class="tl-muted mb-0">
+  <span class="tl-plan tl-plan--{{ plan.status|lower }}">{{ plan.get_status_display }}</span>
+  <span class="ms-2">Prepared by {{ plan.prepared_by.get_username }} on {{ plan.created_at|date:"d M Y" }}</span>
+  {% if plan.submitted_at %}<span class="ms-2">· submitted {{ plan.submitted_at|date:"d M Y H:i" }}</span>{% endif %}
+  {% if plan.validated_at %}<span class="ms-2">· approved by {{ plan.validated_by.get_username }} on {{ plan.validated_at|date:"d M Y H:i" }}</span>{% endif %}
+</p>
+
+{% if plan.ciso_comment %}
+<section class="tl-panel tl-panel--note p-3 mt-3">
+  <h2 class="tl-label mb-1">{% if plan.status == "APPROVED" %}CISO note{% else %}Changes requested by the CISO{% endif %}</h2>
+  <p class="mb-0">{{ plan.ciso_comment|linebreaksbr }}</p>
+</section>
+{% endif %}
+
+<div class="row g-3 mt-1">
+  <div class="{% if plan.is_editable or can_review %}col-lg-8{% else %}col-12{% endif %}">
+    <section class="tl-panel overflow-hidden h-100">
+      <div class="d-flex justify-content-between align-items-baseline px-4 pt-4">
+        <h2 class="h6 mb-1">Alerts in the plan</h2>
+        <span class="small tl-muted">{{ planned|length }} alert{{ planned|length|pluralize }} · {{ fixed_count }} fixed · {{ open_count }} still open</span>
+      </div>
+      {% if planned %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="remove">
+        <div class="table-responsive mt-2">
+          <table class="table tl-table align-middle mb-0">
+            <thead>
+              <tr>
+                {% if plan.is_editable %}<th scope="col"><span class="visually-hidden">Select</span></th>{% endif %}
+                <th scope="col">Priority</th>
+                <th scope="col">CVE</th>
+                <th scope="col" class="d-none d-md-table-cell">Product</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-nowrap d-none d-sm-table-cell">Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alert in planned %}
+              <tr>
+                {% if plan.is_editable %}<td><input class="form-check-input" type="checkbox" name="alerts" value="{{ alert.pk }}" aria-label="Select {{ alert.vulnerability.cve_id }}"></td>{% endif %}
+                <td><span class="tl-priority"><span class="tl-priority__value">{{ alert.priority_score|floatformat:0 }}</span></span></td>
+                <td class="text-nowrap"><a class="tl-cve__id" href="{% url 'alerts:detail' alert.pk %}">{{ alert.vulnerability.cve_id }}</a>{% if alert.vulnerability.kev_entry %} <span class="tl-kev">KEV</span>{% endif %}</td>
+                <td class="d-none d-md-table-cell"><span class="tl-product"><span class="tl-product__vendor">{{ alert.watchlist_item.product.vendor }}</span>
+                  <span class="tl-product__name">{{ alert.watchlist_item.product.name }}</span></span></td>
+                <td><span class="tl-status tl-status--{{ alert.status|lower }}">{{ alert.get_status_display }}</span></td>
+                <td class="small text-nowrap d-none d-sm-table-cell{% if alert.is_open and alert.due_date and alert.due_date < today %} tl-overdue{% endif %}">{{ alert.due_date|date:"d M Y"|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if plan.is_editable %}
+        <div class="px-4 py-3"><button type="submit" class="btn btn-sm btn-outline-danger">Remove the selected alerts</button></div>
+        {% endif %}
+      </form>
+      {% else %}
+      <p class="px-4 pb-4 pt-2 mb-0 tl-muted">No alert in this plan yet.{% if plan.is_editable %} Select open alerts below.{% endif %}</p>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if plan.is_editable %}
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100">
+      <h2 class="h6 mb-2">Submit for approval</h2>
+      <p class="small tl-muted">Once submitted, the plan is locked until a CISO approves it or requests changes.</p>
+      <form method="post" data-tl-confirm="Submit this plan for approval?"
+            data-confirm-text="{{ planned|length }} alert{{ planned|length|pluralize }}. The plan can no longer be changed until the CISO answers."
+            data-confirm-button="Submit">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="submit">
+        <button type="submit" class="btn btn-primary"{% if not planned %} disabled{% endif %}>Submit the plan</button>
+      </form>
+    </section>
+  </div>
+  {% elif can_review %}
+  <div class="col-lg-4">
+    <section class="tl-panel p-4 h-100" aria-labelledby="review-title">
+      <h2 class="h6 mb-2" id="review-title">CISO review</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <label for="{{ review_form.comment.id_for_label }}" class="form-label">Comment</label>
+        {{ review_form.comment }}
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" name="action" value="approve" class="btn btn-primary">Approve</button>
+          <button type="submit" name="action" value="request_changes" class="btn btn-outline-light">Request changes</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  {% endif %}
+
+  {% if plan.is_editable %}
+  <div class="col-12">
+    <section class="tl-panel overflow-hidden">
+      <div class="px-4 pt-4">
+        <h2 class="h6 mb-1">Open alerts to add</h2>
+        <p class="small tl-muted mb-2">Highest priority first. Open alerts left in the plan of an earlier week can be planned again.</p>
+      </div>
+      {% if selectable %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <div class="table-responsive">
+          <table class="table tl-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col"><span class="visually-hidden">Select</span></th>
+                <th scope="col">Priority</th>
+                <th scope="col">CVE</th>
+                <th scope="col" class="d-none d-md-table-cell">Product</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-nowrap d-none d-sm-table-cell">Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alert in selectable %}
+              <tr>
+                <td><input class="form-check-input" type="checkbox" name="alerts" value="{{ alert.pk }}" aria-label="Select {{ alert.vulnerability.cve_id }}"></td>
+                <td><span class="tl-priority"><span class="tl-priority__value">{{ alert.priority_score|floatformat:0 }}</span></span></td>
+                <td class="text-nowrap"><a class="tl-cve__id" href="{% url 'alerts:detail' alert.pk %}">{{ alert.vulnerability.cve_id }}</a>{% if alert.vulnerability.kev_entry %} <span class="tl-kev">KEV</span>{% endif %}{% if alert.plan %} <span class="tl-tag" title="In the plan of the week of {{ alert.plan.period_start|date:'d M' }}">Planned before</span>{% endif %}</td>
+                <td class="d-none d-md-table-cell"><span class="tl-product"><span class="tl-product__vendor">{{ alert.watchlist_item.product.vendor }}</span>
+                  <span class="tl-product__name">{{ alert.watchlist_item.product.name }}</span></span></td>
+                <td><span class="tl-status tl-status--{{ alert.status|lower }}">{{ alert.get_status_display }}</span></td>
+                <td class="small text-nowrap d-none d-sm-table-cell{% if alert.due_date and alert.due_date < today %} tl-overdue{% endif %}">{{ alert.due_date|date:"d M Y"|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="px-4 py-3 d-flex align-items-center gap-3">
+          <button type="submit" class="btn btn-primary btn-sm">Add the selected alerts</button>
+          {% if more_selectable %}<span class="small tl-muted">Only the 50 highest priorities are shown.</span>{% endif %}
+        </div>
+      </form>
+      {% else %}
+      <p class="px-4 pb-4 mb-0 tl-muted">No open alert left to plan.</p>
+      {% endif %}
+    </section>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

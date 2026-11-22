@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Alert, AlertGeneration, AlertStatusChange
+from .models import Alert, AlertGeneration, AlertStatusChange, RemediationPlan
 
 
 class AlertStatusChangeInline(admin.TabularInline):
@@ -46,3 +46,10 @@ class AlertGenerationAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(RemediationPlan)
+class RemediationPlanAdmin(admin.ModelAdmin):
+    list_display = ("period_start", "organization", "status", "prepared_by", "validated_by", "validated_at")
+    list_filter = ("status", "organization")
+    readonly_fields = ("created_at", "submitted_at", "validated_at", "validated_by")

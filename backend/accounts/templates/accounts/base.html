@@ -36,8 +36,9 @@
               {% if section == 'watchlist' %}aria-current="page"{% endif %} href="{% url 'watchlist:list' %}">Watchlist</a></li>
           <li class="nav-item"><a class="nav-link{% if section == 'alerts' %} active{% endif %}"
               {% if section == 'alerts' %}aria-current="page"{% endif %} href="{% url 'alerts:list' %}">Alerts</a></li>
+          <li class="nav-item"><a class="nav-link{% if section == 'plans' %} active{% endif %}"
+              {% if section == 'plans' %}aria-current="page"{% endif %} href="{% url 'plans:list' %}">Remediation plan</a></li>
           {% endwith %}
-          <li class="nav-item"><span class="nav-link disabled" title="Sprint 3">Remediation plan</span></li>
           {% endif %}
           {% if user.is_platform_admin %}
           <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Administration</a></li>
