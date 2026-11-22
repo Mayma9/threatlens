@@ -1,4 +1,4 @@
-"""Acceptance tests of US13: weekly remediation plan prepared by an analyst and approved by a CISO (FR-12)."""
+"""Acceptance tests of US14: weekly remediation plan prepared by an analyst and approved by a CISO (FR-12)."""
 
 from datetime import date
 

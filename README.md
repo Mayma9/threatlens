@@ -126,7 +126,7 @@ Open http://localhost:8000 and log in as `analyst1` or `ciso1`.
 | Enriched CVE record: CVSS scores by provider, effective severity, EPSS, KEV, CWE, affected products | `/vulnerabilities/CVE-2024-3400/` (or a click on a search result) | US04 |
 | Watchlist and product aliases | `/watchlist/` | US07 |
 | Prioritized alerts: open alerts sorted by priority score, filters, status / assignee / comment, history, score explained | `/alerts/` | US11 |
-| Weekly remediation plan: the analyst selects open alerts and submits the plan, a CISO approves it or requests changes (log in as `ciso1`) | `/plans/` | US13 |
+| Weekly remediation plan: the analyst selects open alerts and submits the plan, a CISO approves it or requests changes (log in as `ciso1`) | `/plans/` | US14 |
 
 ## ETL pipeline
 
@@ -166,12 +166,24 @@ docker compose run --rm etl python manage.py generate_alerts --since 2026-10-01
 
 | Factor | Value between 0 and 1 | Weight |
 |---|---|---|
-| Effective severity | effective CVSS score / 10; **0.5** when the CVE has no CVSS score yet | 35 % |
+| Effective severity | effective CVSS score / 10; for a severity predicted by M1, the middle of its class (LOW 0.2, MEDIUM 0.55, HIGH 0.8, CRITICAL 0.95); **0.5** with no score and no prediction | 35 % |
 | Exploitation probability | EPSS score | 25 % |
 | CISA KEV | 1 when the CVE is in the KEV catalog | 25 % |
 | Product criticality | (criticality − 1) / 3, criticality 1 to 4 | 15 % |
 
-The weights are `PRIORITY_WEIGHTS` and `PRIORITY_UNSCORED_SEVERITY` in `settings.py` (team decision, Sprint 3). After changing them: `docker compose exec -T web python manage.py refresh_priorities`. A closed alert keeps the score it had when it was closed. The alert page shows the points of each factor.
+The weights are `PRIORITY_WEIGHTS`, `PRIORITY_PREDICTED_SEVERITY` and `PRIORITY_UNSCORED_SEVERITY` in `settings.py` (team decisions, Sprint 3). After changing them: `docker compose exec -T web python manage.py refresh_priorities`. A closed alert keeps the score it had when it was closed. The alert page shows the points of each factor.
+
+**Predicted severity (US10, model M1).** Some CVEs get no CVSS score from the NVD, their CNA or CISA ADP. Model M1 predicts their severity class (LOW, MEDIUM, HIGH, CRITICAL) from what the CNA publishes: description, title, affected products, CWE and the CNA's name (TF-IDF + logistic regression, FR-23). It predicts the 8 CVSS base metrics and applies the official CVSS formula, combined with a direct prediction of the class. After the loading, each run predicts the CVEs without any CVSS score (scoring step, UC19), then computes the effective severity: NVD > CNA > CISA ADP > M1 prediction (FR-06). A predicted severity is always labeled *predicted* in the console, with the model version and the confidence on the CVE record.
+
+```bash
+docker compose run --rm etl python manage.py run_pipeline --source cve --full   # once: loads the CNA and the title of every CVE
+docker compose run --rm etl python manage.py train_m1 --activate   # trains, evaluates and activates a new version (30-45 min)
+docker compose run --rm etl python manage.py score_m1              # predicts now instead of waiting for the next run
+```
+
+**On each machine.** The model file is git-ignored and the CNA and title columns are new: after pulling this version, run the three commands above once. Without an active version, the scoring step is skipped and the run stays SUCCESS; if the file of the active version is missing on the machine, the run ends PARTIAL (`scoring: FAILED - FileNotFoundError`) until `train_m1 --activate` is run again. When the NVD is loaded, only about 1 % of the CVEs have no CVSS score, so M1 predicts few CVEs.
+
+`train_m1` learns from the CVSS 3.x scores of the CNAs and of the independent analysts (CISA ADP, else the NVD): the two do not score alike, so M1 learns both and predicts the analyst's score for a CVE without score. The settings are chosen on the validation period (Jul 2024 – Jun 2025). The test period (from Jul 2025, the same as the Sprint 1 baseline) is measured twice: with a strict split (a model trained before it, never retrained) and with a model retrained each quarter; `--quick` skips the second measure (about 3 times faster). The model is then refit on every labelled CVE. The file goes to `ml/models/m1_severity_v<N>.joblib` (git-ignored) and the version with its metrics (macro-F1, F1 by class, confusion matrix, scores by scorer, by quarter and by confidence) to the table `ml_mlmodel` and `ml/models/m1_severity_v<N>_metrics.json`. Without `--activate`, the new version is kept but not used. **Retrain every quarter:** new CNAs appear and scoring habits change. The notebook `ml/notebooks/m1_final.ipynb` explains the choices and the results.
 
 **Warehouse (UC21).** The last step of each run rebuilds the `dw` schema by SQL (constellation schema, read by Power BI). By hand, and the FR-20 queries:
 
@@ -201,7 +213,7 @@ py -3.13 -m venv .venv
 .venv\Scripts\python.exe -m jupyterlab
 ```
 
-Open `ml/notebooks/m1_baseline.ipynb` and choose **Kernel → Restart Kernel and Run All Cells**. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
+Open `ml/notebooks/m1_baseline.ipynb` (Sprint 1), `m1_improvement.ipynb` or `m1_final.ipynb` (Sprint 3, after `train_m1`) and choose **Kernel → Restart Kernel and Run All Cells**. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
 
 ## Contributing
 

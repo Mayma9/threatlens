@@ -12,6 +12,7 @@ from alerts.priority import refresh_priority_scores
 from alerts.services import cve_watermark, generate_alerts
 from cti.models import Vulnerability
 from cti.services import refresh_effective_severity
+from ml.scoring import score_severity
 
 from .connectors import REGISTRY
 from .models import IngestionTask, PipelineRun, RunStatus, Source
@@ -86,9 +87,9 @@ def run_pipeline(
                 stdout.write(f"{name}: error - {task.error_message.splitlines()[0]}")
 
     statuses = set(run.tasks.values_list("status", flat=True))
-    alerts_ok = True
-    warehouse_ok = True
+    scoring_ok = alerts_ok = warehouse_ok = True
     if RunStatus.SUCCESS in statuses:
+        scoring_ok = _score(stdout)  # UC19, before the effective severity that falls back on the prediction
         changed = refresh_effective_severity()  # FR-06, before the alerts that use it
         if stdout:
             stdout.write(f"effective severity: {changed} CVEs updated")
@@ -100,11 +101,31 @@ def run_pipeline(
         run.status = RunStatus.FAILED
     else:
         run.status = RunStatus.PARTIAL
-    if run.status == RunStatus.SUCCESS and not (alerts_ok and warehouse_ok):
+    if run.status == RunStatus.SUCCESS and not (scoring_ok and alerts_ok and warehouse_ok):
         run.status = RunStatus.PARTIAL
     run.ended_at = timezone.now()
     run.save()
     return run
+
+
+def _score(stdout=None) -> bool:
+    """Scoring step (UC19, FR-23): the active M1 version predicts the severity of the CVEs without CVSS score.
+
+    No active version: nothing to do. A failure (e.g. model file missing) makes the run PARTIAL,
+    the previous predictions stay in place.
+    """
+    try:
+        result = score_severity()
+    except Exception as exc:  # noqa: BLE001 - logged, the loaded data stays valid
+        if stdout:
+            stdout.write(f"scoring: FAILED - {type(exc).__name__}: {exc}")
+        return False
+    if stdout:
+        if result is None:
+            stdout.write("scoring: no active M1 version, skipped (python manage.py train_m1 --activate)")
+        else:
+            stdout.write(f"scoring: {result.model} predicted the severity of {result.scored} CVEs without CVSS score")
+    return True
 
 
 def _generate_alerts(run, watermark, stdout=None) -> bool:

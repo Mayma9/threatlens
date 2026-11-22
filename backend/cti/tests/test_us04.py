@@ -97,8 +97,8 @@ class RecordTests(TestCase):
         self.assertContains(response, reverse("cti:detail", args=["CVE-2026-1003"]) + "?vendor=fortinet")
 
     def test_record_runs_a_fixed_number_of_queries(self):
-        # session + user, then vulnerability with KEV, CVSS scores, affected products, CWE links
-        with self.assertNumQueries(6):
+        # session + user, then vulnerability with KEV, CVSS scores, affected products, CWE links, M1 prediction
+        with self.assertNumQueries(7):
             self.record("CVE-2024-3400")
 
 

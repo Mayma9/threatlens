@@ -1,14 +1,16 @@
 -- warehouse/sql/olap/02_distribution.sql
 -- FR-20 (2): distribution of CVEs by severity, vendor, product and CWE (CVEs counted with DISTINCT).
 
--- By severity. The NO_SCORE line is the share of CVEs without any CVSS score (KPI of FR-22).
+-- By effective severity. "predicted" = severity predicted by M1 (no CVSS score); NO_SCORE = no score and no prediction.
+-- The CVEs without any CVSS score (KPI of FR-22) are the NO_SCORE line + the predicted lines.
 SELECT s.label AS severity,
+       f.is_severity_predicted AS predicted,
        count(DISTINCT f.vuln_key) AS cves,
        round(100.0 * count(DISTINCT f.vuln_key) / (SELECT count(DISTINCT vuln_key) FROM dw.fact_vulnerability), 1) AS pct
 FROM dw.fact_vulnerability f
 JOIN dw.dim_severity s USING (severity_key)
-GROUP BY s.severity_key, s.label
-ORDER BY s.severity_key;
+GROUP BY s.severity_key, s.label, f.is_severity_predicted
+ORDER BY s.severity_key, f.is_severity_predicted;
 
 -- Top 10 vendors (CVEs with no affected product are left out).
 SELECT p.vendor, count(DISTINCT f.vuln_key) AS cves

@@ -20,6 +20,17 @@ class ParseRecordTests(TestCase):
         providers = sorted((m["provider"], m["base_score"]) for m in record["metrics"])
         self.assertEqual(providers, [("CISA_ADP", 8.8), ("CNA", 9.8)])
 
+    def test_assigner_is_the_cna_short_name_in_lowercase(self):
+        self.assertEqual(parse_record(cve_doc("CVE-2024-0006", assigner=" Wordfence "))["assigner"], "wordfence")
+        doc = cve_doc("CVE-2024-0007")
+        del doc["cveMetadata"]["assignerShortName"]
+        self.assertEqual(parse_record(doc)["assigner"], "")
+
+    def test_title_is_kept_when_the_cna_gives_one(self):
+        record = parse_record(cve_doc("CVE-2024-0008", title="  FortiOS:  buffer overflow in sslvpnd "))
+        self.assertEqual(record["title"], "FortiOS: buffer overflow in sslvpnd")
+        self.assertEqual(parse_record(cve_doc("CVE-2024-0009"))["title"], "")
+
     def test_rejected_record_is_skipped(self):
         self.assertIsNone(parse_record(cve_doc("CVE-2024-0002", state="REJECTED")))
 
@@ -58,6 +69,7 @@ class CveConnectorRunTests(TestCase):
         self.assertEqual(set(Vulnerability.objects.values_list("cve_id", flat=True)), {"CVE-2024-0001", "CVE-2024-0002"})
         self.assertEqual(CVSSMetric.objects.filter(vulnerability__cve_id="CVE-2024-0001").count(), 2)
         self.assertTrue(Product.objects.filter(vendor="microsoft", name="windows").exists())
+        self.assertEqual(Vulnerability.objects.get(cve_id="CVE-2024-0001").assigner, "fortinet")
 
     def test_running_twice_creates_no_duplicates(self):
         self.run_cve(full=True)
