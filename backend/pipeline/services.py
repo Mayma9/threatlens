@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import traceback
+from datetime import timedelta
 
 from django.utils import timezone
 
@@ -17,6 +18,12 @@ from .connectors import REGISTRY
 from .models import IngestionTask, PipelineRun, RunStatus, Source
 from .warehouse import refresh_warehouse
 
+# Delay between two runs of a source (FR-15). An unknown value counts as daily.
+FREQUENCIES = {"hourly": timedelta(hours=1), "daily": timedelta(days=1), "weekly": timedelta(days=7)}
+# A scheduler fires a little before the end of the previous run's delay (the previous run lasted some minutes):
+# 90 % of the delay is enough, otherwise a daily source would only run every other day.
+DUE_RATIO = 0.9
+
 
 def ensure_sources() -> None:
     """Create the Source rows of the registered connectors (the admin can then disable them)."""
@@ -24,7 +31,24 @@ def ensure_sources() -> None:
         Source.objects.get_or_create(name=name, defaults={"label": connector.label, "url": connector.url})
 
 
-def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None, stdout=None) -> PipelineRun:
+def source_is_due(source: Source, now=None) -> bool:
+    """True when the last successful task of the source is older than its frequency (a failed task does not count)."""
+    now = now or timezone.now()
+    last = (
+        source.tasks.filter(status=RunStatus.SUCCESS, ended_at__isnull=False)
+        .order_by("-ended_at")
+        .values_list("ended_at", flat=True)
+        .first()
+    )
+    if last is None:
+        return True
+    delay = FREQUENCIES.get((source.frequency or "").strip().lower(), FREQUENCIES["daily"])
+    return now - last >= delay * DUE_RATIO
+
+
+def run_pipeline(
+    *, sources=None, local_file=None, full=False, scheduled=False, triggered_by=None, stdout=None
+) -> PipelineRun:
     ensure_sources()
     selected = [name for name in REGISTRY if not sources or name in sources]
     run = PipelineRun.objects.create(triggered_by=triggered_by)
@@ -35,6 +59,10 @@ def run_pipeline(*, sources=None, local_file=None, full=False, triggered_by=None
         if not source.is_active:
             if stdout:
                 stdout.write(f"{name}: source disabled, skipped")
+            continue
+        if scheduled and not source_is_due(source):  # a manual run is never skipped
+            if stdout:
+                stdout.write(f"{name}: not due ({source.frequency}), skipped")
             continue
         task = IngestionTask.objects.create(run=run, source=source)
         if stdout:

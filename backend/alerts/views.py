@@ -36,7 +36,7 @@ class AlertAccessMixin(RoleRequiredMixin):
 
     def alerts(self):
         return Alert.objects.filter(watchlist_item__organization=self.request.user.organization).select_related(
-            "vulnerability__kev_entry", "watchlist_item__product", "assignee")
+            "vulnerability__kev_entry", "watchlist_item__product", "assignee", "plan")
 
 
 class AlertListView(AlertAccessMixin, View):

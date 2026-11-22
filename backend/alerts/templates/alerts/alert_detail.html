@@ -53,6 +53,8 @@
         <dt>Due date</dt>
         <dd{% if alert.is_open and alert.due_date and alert.due_date < today %} class="tl-overdue"{% endif %}>{{ alert.due_date|date:"d M Y"|default:"Not set" }}{% if alert.is_open and alert.due_date and alert.due_date < today %} (overdue){% endif %}</dd>
         <dt>Assignee</dt><dd>{{ alert.assignee.get_username|default:"Nobody" }}</dd>
+        <dt>Remediation plan</dt>
+        <dd>{% if alert.plan %}<a href="{% url 'plans:detail' alert.plan.pk %}">Week of {{ alert.plan.period_start|date:"d M Y" }}</a> ({{ alert.plan.get_status_display|lower }}){% else %}Not planned yet{% endif %}</dd>
       </dl>
     </section>
   </div>
