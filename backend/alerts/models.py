@@ -1,5 +1,5 @@
 """Alerts on watched products (US08, FR-08, FR-09), their status history and the weekly
-remediation plan validated by the CISO (US13, FR-12) (class diagram 9.3)."""
+remediation plan validated by the CISO (US14, FR-12) (class diagram 9.3)."""
 
 from django.conf import settings
 from django.db import models

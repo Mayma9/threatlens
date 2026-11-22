@@ -126,7 +126,7 @@ Open http://localhost:8000 and log in as `analyst1` or `ciso1`.
 | Enriched CVE record: CVSS scores by provider, effective severity, EPSS, KEV, CWE, affected products | `/vulnerabilities/CVE-2024-3400/` (or a click on a search result) | US04 |
 | Watchlist and product aliases | `/watchlist/` | US07 |
 | Prioritized alerts: open alerts sorted by priority score, filters, status / assignee / comment, history, score explained | `/alerts/` | US11 |
-| Weekly remediation plan: the analyst selects open alerts and submits the plan, a CISO approves it or requests changes (log in as `ciso1`) | `/plans/` | US13 |
+| Weekly remediation plan: the analyst selects open alerts and submits the plan, a CISO approves it or requests changes (log in as `ciso1`) | `/plans/` | US14 |
 
 ## ETL pipeline
 
@@ -180,6 +180,8 @@ docker compose run --rm etl python manage.py run_pipeline --source cve --full   
 docker compose run --rm etl python manage.py train_m1 --activate   # trains, evaluates and activates a new version (30-45 min)
 docker compose run --rm etl python manage.py score_m1              # predicts now instead of waiting for the next run
 ```
+
+**On each machine.** The model file is git-ignored and the CNA and title columns are new: after pulling this version, run the three commands above once. Without an active version, the scoring step is skipped and the run stays SUCCESS; if the file of the active version is missing on the machine, the run ends PARTIAL (`scoring: FAILED - FileNotFoundError`) until `train_m1 --activate` is run again. When the NVD is loaded, only about 1 % of the CVEs have no CVSS score, so M1 predicts few CVEs.
 
 `train_m1` learns from the CVSS 3.x scores of the CNAs and of the independent analysts (CISA ADP, else the NVD): the two do not score alike, so M1 learns both and predicts the analyst's score for a CVE without score. The settings are chosen on the validation period (Jul 2024 – Jun 2025). The test period (from Jul 2025, the same as the Sprint 1 baseline) is measured twice: with a strict split (a model trained before it, never retrained) and with a model retrained each quarter; `--quick` skips the second measure (about 3 times faster). The model is then refit on every labelled CVE. The file goes to `ml/models/m1_severity_v<N>.joblib` (git-ignored) and the version with its metrics (macro-F1, F1 by class, confusion matrix, scores by scorer, by quarter and by confidence) to the table `ml_mlmodel` and `ml/models/m1_severity_v<N>_metrics.json`. Without `--activate`, the new version is kept but not used. **Retrain every quarter:** new CNAs appear and scoring habits change. The notebook `ml/notebooks/m1_final.ipynb` explains the choices and the results.
 

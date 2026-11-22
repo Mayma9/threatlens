@@ -136,12 +136,12 @@ Unique together: (`raw_vendor`, `raw_product`): a raw name designates one produc
 | `priority_score` | float 0–100 | Weighted mean of severity, EPSS, KEV and product criticality (FR-10, weights in `settings.PRIORITY_WEIGHTS`, see the README); recomputed for open alerts at each run, frozen when the alert is closed |
 | `due_date` | date | Creation date + `ALERT_DUE_DAYS[effective severity]` (CRITICAL 7, HIGH 30, MEDIUM 90, LOW 180, no score 30 days); CISA's KEV due date when it is earlier |
 | `assignee_id` | FK → `accounts_user`, null | Analyst in charge (US11) |
-| `plan_id` | FK → `alerts_remediationplan`, null | Weekly plan that schedules the fix (US13); an open alert of an earlier week's plan can be moved to a later plan |
+| `plan_id` | FK → `alerts_remediationplan`, null | Weekly plan that schedules the fix (US14); an open alert of an earlier week's plan can be moved to a later plan |
 
 Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for the same CVE and watched product.
 **Effective severity** (FR-06): the CVSS score of the first provider in the order NVD > CNA > CISA ADP, newest CVSS version first (`Vulnerability.effective_metric()`).
 
-### `alerts_remediationplan` — weekly remediation plan (US13, FR-12)
+### `alerts_remediationplan` — weekly remediation plan (US14, FR-12)
 
 One plan per organization and week. Workflow: `DRAFT` → `SUBMITTED` → `APPROVED`, or `SUBMITTED` → `CHANGES_REQUESTED` → `SUBMITTED`. The plan can be changed only while `DRAFT` or `CHANGES_REQUESTED`.
 
