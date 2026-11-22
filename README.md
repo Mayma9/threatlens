@@ -22,10 +22,13 @@ The full scope is defined in the [requirements specification](docs/specification
 
 | Member | Scrum role | Lead areas |
 |---|---|---|
-| Imen Hichri ([@imenHi](https://github.com/imenHi)) | Product Owner | Connectors (KEV, EPSS, NVD, CWE, ThreatFox, ATT&CK, CTID), data quality, data warehouse |
+| Abdelaziz Menchari (supervisor) | Product Owner | Priorities of the product backlog, acceptance of the increment at each validation |
+| Imen Hichri ([@imenHi](https://github.com/imenHi)) | Developer | Connectors (KEV, EPSS, NVD, CWE, ThreatFox, ATT&CK, CTID), data quality, data warehouse |
 | Oumaima Hafiane ([@Mayma9](https://github.com/Mayma9)) | Scrum Master | CVE List V5 connector, Django console |
 
 Shared: machine learning (M1–M3), Power BI reports, environment setup, code reviews, tests, documentation, demonstration.
+
+The specification v2 names Imen Hichri Product Owner; the roles above replace it (see [decisions](docs/decisions.md), 2026-11-22).
 
 ## Sprint calendar
 
