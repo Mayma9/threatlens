@@ -25,6 +25,8 @@ To refresh the report with the latest data: run the pipeline (or `docker compose
 |---|---|
 | `threatlens_exposure.pbix` | First report (US09): vulnerability volume, severity and exposure |
 | `check_kpis.sql` | Expected values of the report cards, computed in SQL (data-quality check of the report) |
+| `threatlens_decision.pbix` | Decision report (US12): threat activity; the other pages are in progress |
+| `check_threat_activity.sql` | Expected values of the *Threat activity* page of the decision report, computed in SQL |
 
 ## Report `threatlens_exposure.pbix` (US09)
 
@@ -102,12 +104,59 @@ Format: `% without CVSS` and `% KEV` as percentage with 1 decimal; the others as
 
 Severity colors (same as the console): CRITICAL `#FF6B6B`, HIGH `#F5B544`, MEDIUM `#2DD4EF`, LOW `#7BD88F`, NONE `#9FB3CA`, NO_SCORE `#5B6B7F`.
 
+## Report `threatlens_decision.pbix` (US12)
+
+Decision report for the CISO. It is a separate file from `threatlens_exposure.pbix` because a `.pbix` is binary and cannot be merged by Git. Same connection as above (Import mode, `powerbi_reader`). Page done: **Threat activity**; the remediation, drill-down and ML pages are in progress.
+
+### Model
+
+| Table | Rows | Note |
+|---|---|---|
+| `fact_ioc` | one per indicator × first-seen day × source | `malware_key` is empty for the IOCs that ThreatFox gives with no family or as `unknown` (see below) |
+| `dim_date`, `dim_malware`, `dim_threat_type` | dimensions | |
+
+`dim_indicator` is **not loaded**: it holds the IOC values, which are never shown or opened (risk R9). The tables are renamed without the `dw` prefix that Power BI adds (`fact_ioc`, not `dw fact_ioc`), so the measures below can be copied as they are.
+
+Relationships (many-to-one, single direction, from the fact table to the dimension):
+
+| From | To | Active |
+|---|---|---|
+| `fact_ioc[first_seen_date_key]` | `dim_date[date_key]` | yes (role: first seen) |
+| `fact_ioc[malware_key]` | `dim_malware[malware_key]` | yes |
+| `fact_ioc[threat_type_key]` | `dim_threat_type[threat_type_key]` | yes |
+
+Model settings: **Auto date/time** off (as above); page size *Custom* 1280 × 720.
+
+### Measures
+
+```dax
+-- in fact_ioc
+IOCs = SUM ( fact_ioc[ioc_count] )
+Families = DISTINCTCOUNTNOBLANK ( fact_ioc[malware_key] )
+Average confidence = AVERAGE ( fact_ioc[confidence] )
+IOCs without family = CALCULATE ( [IOCs], ISBLANK ( fact_ioc[malware_key] ) )
+% IOCs without family = DIVIDE ( [IOCs without family], [IOCs] )
+```
+
+`Families` uses `DISTINCTCOUNTNOBLANK`: `DISTINCTCOUNT` would count the empty family as one more family, unlike SQL `count(DISTINCT ...)`. Format: `% IOCs without family` as percentage with 1 decimal, `Average confidence` with 1 decimal, the others as whole numbers.
+
+### Pages
+
+| Page | Visuals |
+|---|---|
+| **Threat activity** | Cards: `IOCs`, `Families`, `Average confidence`, `% IOCs without family`. Clustered bar chart *Top 10 malware families (IOCs)*: Y = `dim_malware[family]`, X = `IOCs` (visual filters: Top N 10 on `family` by `IOCs`, `fact_ioc[malware_key]` is not blank). Clustered bar chart *IOCs by threat type*: Y = `dim_threat_type[label]`, X = `IOCs`. Clustered column chart *IOCs by first-seen day*: X = `dim_date[full_date]`, Y = `IOCs`, no date filter (each ThreatFox load returns the IOCs first seen in the last 7 days). A text box explains the source, "Unknown Loader", the IOCs without family and risk R9. |
+
+**IOCs without family.** The ThreatFox connector stores no family when ThreatFox gives an empty value or `unknown` (`UNKNOWN_MALWARE` in `backend/pipeline/connectors/threatfox.py`), and counts these IOCs in the quality report of the run (`without_malware_family`). They are counted in `IOCs` and in their own card, and left out of the top 10. "Unknown Loader" is a ThreatFox catch-all label for loaders not attributed to a known family; it is kept as a family.
+
+**Check.** With no filter selected, the page must show the values of `docker compose exec -T db psql -U threatlens -d threatlens < powerbi/check_threat_activity.sql` (in Windows PowerShell: `Get-Content powerbi\check_threat_activity.sql -Raw | docker compose exec -T db psql -U threatlens -d threatlens`). If two families tie for the 10th place, Power BI shows both while SQL shows one.
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | *We couldn't authenticate with the credentials provided* although the password is the one of `.env` | Another PostgreSQL installed on Windows also listens on port 5432 (`netstat -ano \| grep ":5432 "` shows two PIDs). Stop it (PowerShell as administrator: `Get-Service *postgres* \| Stop-Service`) or use the server `127.0.0.1:5432`. |
 | The `powerbi_reader` password in the database differs from `.env` (the role is created once, with the database volume) | Reset it from `.env`: see the command below. |
+| The first **Refresh** after opening a `.pbix` fails with *A cyclic reference was encountered during evaluation* on some tables, although the same file refreshes on another computer | Known Power BI Desktop issue with the first refresh after opening a file: click **Close**, then **Refresh** again. If it comes back, update Power BI Desktop or clear its cache (*File → Options and settings → Options → Global → Data load → Clear cache*). |
 
 ```bash
 PW=$(grep '^POWERBI_READER_PASSWORD=' .env | cut -d= -f2-)
@@ -130,7 +179,7 @@ SQL
 | KEV vulnerabilities affecting the watchlist | Distinct KEV CVEs with an alert on a watched product (product names and aliases) | `Watchlist KEV CVEs` | `fact_alert` |
 | Delay between publication and KEV addition | Median of `days_to_kev` over distinct KEV CVEs (the median, because CVEs added when the catalog started in 2021 are years old) | `Median days to KEV`, `Median days to KEV by date added` | `fact_vulnerability`, `dim_date` (KEV added) |
 | Open alerts by priority and status, mean time to remediate, overdue alerts | Sprint 3 (US12) | | `fact_alert` |
-| IOC volume by malware family | Sprint 3–4 (ThreatFox) | | `fact_ioc` |
+| IOC volume by malware family | IOCs by first-seen day, malware family and threat type (ThreatFox); IOCs without family counted apart | `IOCs`, `Families`, `% IOCs without family` (report `threatlens_decision.pbix`) | `fact_ioc`, `dim_malware`, `dim_threat_type`, `dim_date` (first seen) |
 | Performance of M1 and M2 | Sprint 3–4 | | ML metrics |
 
 `Watchlist CVEs` counts only the CVEs that have an alert. For CVEs loaded before a product was added to the watchlist, run `generate_alerts --since` first (see the main README).
