@@ -1,4 +1,4 @@
-"""Weekly remediation plan (US13, FR-12): the analyst selects open alerts, the CISO approves the plan
+"""Weekly remediation plan (US14, FR-12): the analyst selects open alerts, the CISO approves the plan
 or requests changes with a comment. The preparer, the approval date and the approver are recorded.
 
 Rules (team decisions, Sprint 3):

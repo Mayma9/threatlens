@@ -61,7 +61,8 @@ SELECT
     COALESCE(url, '')
 FROM public.pipeline_source;
 
--- Severity labels as stored in cti_vulnerability.effective_severity; an empty value = no CVSS score.
+-- Severity labels as stored in cti_vulnerability.effective_severity (CVSS score, else M1 prediction);
+-- an empty value = no CVSS score and no prediction.
 INSERT INTO dw.dim_severity (severity_key, label, score_min, score_max) VALUES
     (0, 'NO_SCORE', NULL, NULL),
     (1, 'NONE',     0.0,  0.0),
@@ -130,8 +131,8 @@ SELECT
     (k.vulnerability_id IS NOT NULL),
     CASE WHEN k.vulnerability_id IS NOT NULL
          THEN k.date_added - (v.published_at AT TIME ZONE 'UTC')::date END,
-    NULL,
-    false
+    NULL,                       -- exploit_probability: model M2
+    v.is_severity_predicted     -- severity_key is then the class predicted by M1 and cvss_score is empty
 FROM public.cti_vulnerability v
 LEFT JOIN public.cti_affectedproduct a ON a.vulnerability_id = v.id
 LEFT JOIN public.cti_keventry k ON k.vulnerability_id = v.id

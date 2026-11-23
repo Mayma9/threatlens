@@ -10,14 +10,17 @@ Tables created by Django migrations in the `public` schema. The warehouse (`dw` 
 |---|---|---|---|
 | `id` | bigint, PK | — | Technical key |
 | `cve_id` | varchar(32), unique | CVE List V5 `cveMetadata.cveId` | CVE identifier, format `CVE-YYYY-NNNN…` |
+| `assigner` | varchar(64) | CVE List V5 `cveMetadata.assignerShortName` | CNA that published the record, in lowercase (e.g. `wordfence`); a feature of model M1 |
+| `title` | varchar(300) | CVE List V5 CNA `title` | Title of the record when the CNA gives one (about 4 CVEs in 10); a feature of model M1 |
 | `description` | text | CVE List V5 CNA `descriptions` (English) | Vulnerability description |
 | `published_at` | timestamptz, null | CVE List V5 `datePublished` | Publication date (records before 2023 may be inconsistent, risk R3) |
 | `source_updated_at` | timestamptz, null, indexed | CVE List V5 `dateUpdated` | Last update of the record; watermark of the incremental load |
 | `nvd_status` | varchar(32) | NVD API `vulnStatus` | NVD analysis status (`Analyzed`, `Awaiting Analysis`, `Deferred`, `Modified`…); empty = not read from the NVD yet |
 | `epss_score` | float, null | FIRST EPSS (`epss` connector) | Probability of exploitation within 30 days (0–1) |
 | `epss_percentile` | float, null | FIRST EPSS (`epss` connector) | Percentile of the EPSS score (0–1) |
-| `effective_severity` | varchar, indexed | Computed after each run | Severity of the effective CVSS score (FR-06: NVD > CNA > CISA ADP, newest version first); empty = no score yet. Used by the search filters (US03) |
-| `effective_score` | float, null | Computed after each run | Base score of that effective CVSS score |
+| `effective_severity` | varchar, indexed | Computed after each run | Effective severity (FR-06): the severity of the first CVSS score in the order NVD > CNA > CISA ADP, newest version first; without any score, the severity predicted by the active M1 version; empty = no score and no prediction. Used by the search filters (US03) |
+| `effective_score` | float, null | Computed after each run | Base score of that effective CVSS score; empty when there is no CVSS score (also when the severity is predicted) |
+| `is_severity_predicted` | boolean | Computed after each run | `true` when `effective_severity` comes from M1: shown as *predicted* in the console |
 
 EPSS columns: only the latest score is kept; the `epss` connector updates them in place at each run. The model version and the score date of each run are in `pipeline_ingestiontask.quality_report` (history belongs to the warehouse).
 
@@ -133,12 +136,12 @@ Unique together: (`raw_vendor`, `raw_product`): a raw name designates one produc
 | `priority_score` | float 0–100 | Weighted mean of severity, EPSS, KEV and product criticality (FR-10, weights in `settings.PRIORITY_WEIGHTS`, see the README); recomputed for open alerts at each run, frozen when the alert is closed |
 | `due_date` | date | Creation date + `ALERT_DUE_DAYS[effective severity]` (CRITICAL 7, HIGH 30, MEDIUM 90, LOW 180, no score 30 days); CISA's KEV due date when it is earlier |
 | `assignee_id` | FK → `accounts_user`, null | Analyst in charge (US11) |
-| `plan_id` | FK → `alerts_remediationplan`, null | Weekly plan that schedules the fix (US13); an open alert of an earlier week's plan can be moved to a later plan |
+| `plan_id` | FK → `alerts_remediationplan`, null | Weekly plan that schedules the fix (US14); an open alert of an earlier week's plan can be moved to a later plan |
 
 Unique together: (`vulnerability_id`, `watchlist_item_id`): never two alerts for the same CVE and watched product.
 **Effective severity** (FR-06): the CVSS score of the first provider in the order NVD > CNA > CISA ADP, newest CVSS version first (`Vulnerability.effective_metric()`).
 
-### `alerts_remediationplan` — weekly remediation plan (US13, FR-12)
+### `alerts_remediationplan` — weekly remediation plan (US14, FR-12)
 
 One plan per organization and week. Workflow: `DRAFT` → `SUBMITTED` → `APPROVED`, or `SUBMITTED` → `CHANGES_REQUESTED` → `SUBMITTED`. The plan can be changed only while `DRAFT` or `CHANGES_REQUESTED`.
 
@@ -201,6 +204,35 @@ One plan per organization and week. Workflow: `DRAFT` → `SUBMITTED` → `APPRO
 | `rejected` | Records refused by the quality checks |
 | `quality_report` | JSON: snapshot file, skipped counts, loaded sub-counts, `rejected_by_reason`, up to 200 `rejected_examples` |
 | `error_message` | Exception and short traceback when the task failed |
+
+## Machine learning (`ml` app)
+
+### `ml_mlmodel` — trained model versions (FR-26)
+
+| Column | Type | Description |
+|---|---|---|
+| `name` | varchar(50) | `m1-severity` (M2 and M3 later) |
+| `task` | `SEVERITY` / `EXPLOITATION` / `CLUSTERING` | M1, M2, M3 |
+| `version` | varchar(20) | `1`, `2`… in training order; unique with `name` |
+| `algorithm` | varchar(200) | e.g. "TF-IDF + logistic regression: severity class and CVSS base metrics (official CVSS formula), combined" |
+| `metrics` | JSON | Test period, strict split: `macro_f1`, `accuracy`, `right_or_one_class_away`, `f1_by_class`, `confusion_matrix`, `by_scorer`, `by_confidence`, `reference_text_only`; `retrained_each_quarter` (same scores with a model retrained before each quarter, and the detail by quarter); settings (`features`, `C`, `metric_weight` and its validation scores), `label`, periods and sizes |
+| `artifact` | varchar(200) | File in `ml/models/` (git-ignored), e.g. `m1_severity_v1.joblib` |
+| `trained_at` | timestamptz | |
+| `is_active` | boolean | Version used for scoring; at most one active version per task |
+
+### `ml_severityprediction` — severity predicted by M1 (FR-23, UC19)
+
+One row per model version × CVE. The pipeline predicts the CVEs without any CVSS score: not yet predicted by the active version, or updated since their prediction. The prediction is the score an independent analyst (CISA ADP, NVD) would give, since the CNA gave none.
+
+| Column | Type | Description |
+|---|---|---|
+| `model_id` | FK → `ml_mlmodel` | Model version that made the prediction |
+| `vulnerability_id` | FK → `cti_vulnerability` | Unique with `model_id` |
+| `created_at` | timestamptz | Date of the (latest) prediction |
+| `predicted_severity` | `LOW` / `MEDIUM` / `HIGH` / `CRITICAL` | Predicted class |
+| `confidence` | float, check 0–1 | Probability of the predicted class given by the model (in `ml_mlmodel.metrics`, `by_confidence` gives the scores of the most confident predictions) |
+
+The predictions stay when the CVE later gets a CVSS score (the score then wins, FR-06). The secondary target of FR-23 (CWE) is not predicted: risk R4 plan, see [decisions](decisions.md).
 
 ## Quality rules applied at load time
 

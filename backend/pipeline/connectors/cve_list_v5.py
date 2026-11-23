@@ -3,7 +3,7 @@
 Source: the daily "all CVEs at midnight" bulk file of the latest GitHub release
 (a zip that contains cves.zip, which contains one JSON file per CVE record).
 
-Per record we keep: CVE id, English description, publication and update dates,
+Per record we keep: CVE id, CNA that published it (assigner), title, English description, publication and update dates,
 CVSS scores published by the CNA and by CISA ADP (every version), affected products,
 and the CWE identifiers of their problem types (links to the CWE catalog).
 REJECTED records are skipped. CISA ADP SSVC fields are NOT loaded (M2 label leakage).
@@ -127,6 +127,8 @@ def parse_record(doc: dict) -> dict | None:
 
     return {
         "cve_id": str(meta.get("cveId", "")).strip(),
+        "assigner": str(meta.get("assignerShortName") or "").strip().lower()[:64],
+        "title": " ".join(str(cna.get("title") or "").split())[:300],
         "description": description.strip(),
         "published_at": parse_datetime(meta.get("datePublished")),
         "source_updated_at": parse_datetime(meta.get("dateUpdated")),
@@ -220,6 +222,8 @@ class CveListV5Connector(BaseConnector):
             [
                 Vulnerability(
                     cve_id=r["cve_id"],
+                    assigner=r["assigner"],
+                    title=r["title"],
                     description=r["description"],
                     published_at=r["published_at"],
                     source_updated_at=r["source_updated_at"],
@@ -228,7 +232,7 @@ class CveListV5Connector(BaseConnector):
             ],
             update_conflicts=True,
             unique_fields=["cve_id"],
-            update_fields=["description", "published_at", "source_updated_at"],
+            update_fields=["assigner", "title", "description", "published_at", "source_updated_at"],
         )
         ids = dict(Vulnerability.objects.filter(cve_id__in=[r["cve_id"] for r in records]).values_list("cve_id", "id"))
 

@@ -36,7 +36,7 @@ A CVE that names no affected product gets one row with `product_key = 0` (unknow
 | `published_date_key` | FK → `dim_date` (role: published) | UTC date of `published_at` |
 | `kev_date_key` | FK → `dim_date` (role: kev_added), null | Date added to CISA KEV; empty when the CVE is not in KEV |
 | `weakness_key` | FK → `dim_weakness` | Primary CWE of the CVE (rule below); `0` when the record names no CWE. The full list stays in `cti_vulnerabilityweakness`. |
-| `severity_key` | FK → `dim_severity` | Effective severity (FR-06); `NO_SCORE` when the CVE has no CVSS score |
+| `severity_key` | FK → `dim_severity` | Effective severity (FR-06): CVSS score, else the class predicted by M1; `NO_SCORE` when the CVE has neither |
 | `source_key` | FK → `dim_source` | Source of the record (`cve`) |
 | `cvss_score` | float 0–10, null | Effective CVSS base score; empty when there is no score |
 | `epss_score` | float 0–1, null | Latest EPSS score; empty when the CVE is not in the EPSS file |
@@ -44,7 +44,7 @@ A CVE that names no affected product gets one row with `product_key = 0` (unknow
 | `is_kev` | boolean | The CVE is in the CISA KEV catalog |
 | `days_to_kev` | integer, null | KEV date minus publication date. Large for the older CVEs that CISA added when the catalog started: use the median, not the average |
 | `exploit_probability` | float 0–1, null | Prediction of model M2 (Sprint 3); empty today |
-| `is_severity_predicted` | boolean | `true` when the severity comes from model M1 (Sprint 3); always `false` today |
+| `is_severity_predicted` | boolean | `true` when the severity comes from model M1 (`cvss_score` is then empty) |
 
 **Primary CWE** (spec 11.2: `fact_vulnerability` keeps one CWE per CVE). Among the CWEs named by the record: NVD first, then the CNA, then CISA ADP; a weakness before a category; then the first CWE cited. The CVE record page of the console uses the same rule and marks this CWE *Primary*.
 
@@ -90,7 +90,7 @@ From `cti_indicator` (ThreatFox gives one `first_seen` per IOC, so one row per I
 | `dim_vulnerability` | `vuln_key` | `cve_id`, `description`, `nvd_status`, `published_at` (date) | From `cti_vulnerability` |
 | `dim_product` | `product_key` (0 = unknown) | `vendor`, `product`, `cpe_prefix`, `is_watched`, `criticality` | From `cti_product`. `is_watched` is true when an organization watches the product; `criticality` is the **highest** criticality among the organizations that watch it. Names are as published by the CNAs (risk R10): the same vendor may appear under several spellings. |
 | `dim_weakness` | `weakness_key` (0 = unknown) | `cwe_id`, `name` | The whole MITRE CWE catalog from `cti_weakness` (weaknesses and categories), plus `0` = the CVE record names no CWE |
-| `dim_severity` | `severity_key` | `label`, `score_min`, `score_max` | Static: 0 `NO_SCORE` (no CVSS score), 1 `NONE` (0.0), 2 `LOW` (0.1–3.9), 3 `MEDIUM` (4.0–6.9), 4 `HIGH` (7.0–8.9), 5 `CRITICAL` (9.0–10.0) |
+| `dim_severity` | `severity_key` | `label`, `score_min`, `score_max` | Static: 0 `NO_SCORE` (no CVSS score and no M1 prediction), 1 `NONE` (0.0), 2 `LOW` (0.1–3.9), 3 `MEDIUM` (4.0–6.9), 4 `HIGH` (7.0–8.9), 5 `CRITICAL` (9.0–10.0) |
 | `dim_alert_status` | `status_key` | `label`, `is_open` | Static: 1 `NEW` and 2 `IN_PROGRESS` (open), 3 `FIXED`, 4 `RISK_ACCEPTED`, 5 `FALSE_POSITIVE` (closed) |
 | `dim_technique` | `technique_key` | `technique_id`, `name`, `tactic` | Empty (ATT&CK) |
 | `dim_indicator` | `indicator_key` | `value`, `ioc_type` | One row per `cti_indicator` (`value` cut to 500 characters) |

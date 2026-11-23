@@ -9,7 +9,7 @@ from pathlib import Path
 def cve_doc(cve_id, *, state="PUBLISHED", published="2024-03-01T10:00:00.000Z", updated="2024-03-02T10:00:00.000Z",
             description="Buffer overflow in the web interface allows remote code execution.",
             cna_score=9.8, adp_score=None, affected=(("Fortinet", "FortiOS", "7.2.0"),),
-            cna_cwes=(), adp_cwes=()):
+            cna_cwes=(), adp_cwes=(), assigner="fortinet", title=""):
     cna = {
         "descriptions": [{"lang": "en", "value": description}] if description else [],
         "affected": [
@@ -17,6 +17,8 @@ def cve_doc(cve_id, *, state="PUBLISHED", published="2024-03-01T10:00:00.000Z", 
         ],
         "metrics": [],
     }
+    if title:
+        cna["title"] = title
     if cna_cwes:
         cna["problemTypes"] = [{"descriptions": [
             {"lang": "en", "type": "CWE", "cweId": cwe, "description": f"{cwe} weakness"} for cwe in cna_cwes
@@ -39,7 +41,8 @@ def cve_doc(cve_id, *, state="PUBLISHED", published="2024-03-01T10:00:00.000Z", 
         }]
     return {
         "dataType": "CVE_RECORD", "dataVersion": "5.1",
-        "cveMetadata": {"cveId": cve_id, "state": state, "datePublished": published, "dateUpdated": updated},
+        "cveMetadata": {"cveId": cve_id, "assignerShortName": assigner, "state": state,
+                        "datePublished": published, "dateUpdated": updated},
         "containers": containers,
     }
 

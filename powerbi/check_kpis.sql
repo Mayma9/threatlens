@@ -13,12 +13,12 @@ UNION ALL
 SELECT 3, '% KEV', round(100.0 * count(DISTINCT vuln_key) FILTER (WHERE is_kev) / nullif(count(DISTINCT vuln_key), 0), 1)::text || ' %'
 FROM dw.fact_vulnerability
 UNION ALL
-SELECT 4, 'CVEs without CVSS', count(DISTINCT f.vuln_key)::text
-FROM dw.fact_vulnerability f JOIN dw.dim_severity s USING (severity_key) WHERE s.label = 'NO_SCORE'
+SELECT 4, 'CVEs without CVSS', count(DISTINCT vuln_key)::text
+FROM dw.fact_vulnerability WHERE cvss_score IS NULL
 UNION ALL
-SELECT 5, '% without CVSS', round(100.0 * count(DISTINCT f.vuln_key) FILTER (WHERE s.label = 'NO_SCORE')
-                               / nullif(count(DISTINCT f.vuln_key), 0), 1)::text || ' %'
-FROM dw.fact_vulnerability f JOIN dw.dim_severity s USING (severity_key)
+SELECT 5, '% without CVSS', round(100.0 * count(DISTINCT vuln_key) FILTER (WHERE cvss_score IS NULL)
+                               / nullif(count(DISTINCT vuln_key), 0), 1)::text || ' %'
+FROM dw.fact_vulnerability
 UNION ALL
 SELECT 6, 'Watched products', count(*)::text FROM dw.dim_product WHERE is_watched
 UNION ALL

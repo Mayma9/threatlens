@@ -1,4 +1,4 @@
-"""Weekly remediation plan pages (US13, FR-12). Analysts prepare the plan, a CISO approves it.
+"""Weekly remediation plan pages (US14, FR-12). Analysts prepare the plan, a CISO approves it.
 
 Each user only sees the plans of their own organization.
 """

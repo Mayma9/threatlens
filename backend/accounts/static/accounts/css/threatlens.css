@@ -180,6 +180,8 @@ a.tl-product:hover .tl-product__name { color: var(--tl-cyan); }
 .tl-sev--high { --tl-sev-color: var(--tl-amber); }
 .tl-sev--medium { --tl-sev-color: var(--tl-cyan); }
 .tl-sev--unscored { border-style: dashed; font-weight: 500; }
+.tl-sev--predicted { border-style: dotted; background: transparent; font-style: italic; }
+.tl-prediction { border-top: 1px solid var(--tl-line); }
 a.tl-cve__id { text-decoration: none; }
 a.tl-cve__id:hover { color: var(--tl-cyan); }
 
@@ -216,7 +218,7 @@ a.tl-cve__id:hover { color: var(--tl-cyan); }
   .tl-priority__bar { display: none; }
 }
 
-/* ---------- Remediation plan (US13) ---------- */
+/* ---------- Remediation plan (US14) ---------- */
 .tl-plan { display: inline-block; padding: 0.05rem 0.55rem; border-radius: 999px; border: 1px solid var(--tl-line); font-size: 0.78rem; font-weight: 600; color: var(--tl-mist); white-space: nowrap; }
 .tl-plan--submitted { border-color: rgba(45, 212, 239, 0.6); color: var(--tl-cyan); }
 .tl-plan--changes_requested { border-color: rgba(245, 181, 68, 0.6); color: var(--tl-amber); }
