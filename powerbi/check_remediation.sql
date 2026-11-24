@@ -53,3 +53,41 @@ SELECT year AS published_year,
 FROM k
 GROUP BY year
 ORDER BY year;
+
+-- Part 2: alerts on the watchlist (FR-22). On a development database these are demo alerts:
+-- an alert created and closed the same week gives a remediation time of 0 days.
+-- is_overdue is only true for open alerts (a closed alert is never overdue).
+-- Priority bands: Very high 75-100, High 50-74, Medium 25-49, Low under 25.
+
+-- 4. Alert cards (MTTR: FIXED alerts only)
+SELECT count(*) AS alerts,
+       count(*) FILTER (WHERE s.is_open) AS open_alerts,
+       count(*) FILTER (WHERE a.is_overdue) AS overdue_alerts,
+       count(*) FILTER (WHERE s.label = 'FIXED') AS fixed_alerts,
+       round(avg(a.days_open) FILTER (WHERE s.label = 'FIXED'), 1) AS mttr_days
+FROM dw.fact_alert a
+JOIN dw.dim_alert_status s ON s.status_key = a.status_key;
+
+-- 5. Alerts by status and priority band
+SELECT s.label AS status,
+       CASE
+           WHEN a.priority_score >= 75 THEN '1 Very high'
+           WHEN a.priority_score >= 50 THEN '2 High'
+           WHEN a.priority_score >= 25 THEN '3 Medium'
+           ELSE '4 Low'
+       END AS priority_band,
+       count(*) AS alerts
+FROM dw.fact_alert a
+JOIN dw.dim_alert_status s ON s.status_key = a.status_key
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+-- 6. Overdue alerts, highest priority first
+SELECT v.cve_id, p.vendor, p.product, s.label AS status,
+       round(a.priority_score::numeric, 1) AS priority, a.is_kev, a.days_open
+FROM dw.fact_alert a
+JOIN dw.dim_alert_status s ON s.status_key = a.status_key
+JOIN dw.dim_vulnerability v ON v.vuln_key = a.vuln_key
+JOIN dw.dim_product p ON p.product_key = a.product_key
+WHERE a.is_overdue
+ORDER BY a.priority_score DESC, v.cve_id;
