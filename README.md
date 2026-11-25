@@ -213,7 +213,7 @@ py -3.13 -m venv .venv
 .venv\Scripts\python.exe -m jupyterlab
 ```
 
-Open `ml/notebooks/m1_baseline.ipynb` (Sprint 1), `m1_improvement.ipynb` or `m1_final.ipynb` (Sprint 3, after `train_m1`) and choose **Kernel → Restart Kernel and Run All Cells**. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
+Open `ml/notebooks/m1_baseline.ipynb` (Sprint 1), `m1_improvement.ipynb`, `m1_final.ipynb` (Sprint 3, after `train_m1`) or `m2_exploitation.ipynb` (Sprint 3) and choose **Kernel → Restart Kernel and Run All Cells**. The first run of `m2_exploitation.ipynb` downloads 48 dated EPSS files (about 90 MB) into `data/staging/epss/`, which Git ignores; later runs reuse them. Running a notebook rewrites its outputs: do not commit the modified `.ipynb` or metrics files unless that is intended.
 
 ## Contributing
 
