@@ -218,7 +218,7 @@ One plan per organization and week. Workflow: `DRAFT` → `SUBMITTED` → `APPRO
 | `metrics` | JSON | Test period, strict split: `macro_f1`, `accuracy`, `right_or_one_class_away`, `f1_by_class`, `confusion_matrix`, `by_scorer`, `by_confidence`, `reference_text_only`; `retrained_each_quarter` (same scores with a model retrained before each quarter, and the detail by quarter); settings (`features`, `C`, `metric_weight` and its validation scores), `label`, periods and sizes |
 | `artifact` | varchar(200) | File in `ml/models/` (git-ignored), e.g. `m1_severity_v1.joblib` |
 | `trained_at` | timestamptz | |
-| `is_active` | boolean | Version used for scoring; at most one active version per task |
+| `is_active` | boolean | Version used for scoring; at most one active version per task. Set by `train_m1 --activate` or by the administrator in the Django admin (US15); each activation is logged in the admin history |
 
 ### `ml_severityprediction` — severity predicted by M1 (FR-23, UC19)
 
