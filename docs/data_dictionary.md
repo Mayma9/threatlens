@@ -100,6 +100,53 @@ IOC values are data only: never visited, resolved or shown as links (risk R9). R
 | `confidence` | smallint 0–100 | `confidence_level` | Confidence given by the reporter |
 | `first_seen`, `last_seen` | timestamptz | `first_seen`, `last_seen` | UTC; `last_seen` is often empty |
 
+### `cti_technique` — MITRE ATT&CK Enterprise techniques and sub-techniques (attack connector, #61)
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `technique_id` | varchar(16), unique | `external_references` (`mitre-attack`) | ATT&CK id, e.g. `T1059`, or the sub-technique `T1059.001` |
+| `stix_id` | varchar(100), unique | `id` | STIX id (`attack-pattern--…`), used to read the relationships |
+| `name` | varchar(300) | `name` | e.g. `Command and Scripting Interpreter` |
+| `tactics` | varchar(300) | `kill_chain_phases` (`mitre-attack`) | Comma-separated tactics, e.g. `execution` |
+| `is_subtechnique` | boolean | `x_mitre_is_subtechnique` | |
+
+### `cti_threatgroup` — MITRE ATT&CK threat groups (attack connector, US17)
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `group_id` | varchar(16), unique | `external_references` (`mitre-attack`) | e.g. `G0007` |
+| `stix_id` | varchar(100), unique | `id` | `intrusion-set--…` |
+| `name` | varchar(200) | `name` | e.g. `APT28` |
+| `aliases` | JSON list | `aliases`, without the name | e.g. `["Fancy Bear", "Sofacy"]` |
+| `cluster_id` | integer, nullable | — | Cluster of groups with similar techniques, set by the clustering model M3; empty until M3 runs |
+
+The links of a group come from the ATT&CK *uses* relationships and are rebuilt at each run: `cti_threatgroup_techniques` (`threatgroup_id`, `technique_id`: the binary group × technique matrix of M3) and `cti_threatgroup_software` (`threatgroup_id`, `software_id`). Revoked and deprecated objects are skipped. Rejected: invalid ATT&CK id, missing name, missing STIX id, duplicate object.
+
+### `cti_software` — MITRE ATT&CK software: malware and tools (attack connector)
+
+Kept apart from `cti_malware` (ThreatFox families named by Malpedia): the two catalogs use different identifiers.
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `software_id` | varchar(16), unique | `external_references` (`mitre-attack`) | e.g. `S0154` |
+| `stix_id` | varchar(100), unique | `id` | `malware--…` or `tool--…` |
+| `name` | varchar(200) | `name` | e.g. `Cobalt Strike` |
+| `kind` | varchar(10) | STIX type | `MALWARE` or `TOOL` |
+| `aliases` | JSON list | `x_mitre_aliases`, without the name | |
+
+### `cti_vulnerabilitytechnique` — vulnerability × ATT&CK technique (ctid connector, #61)
+
+From the CTID mappings of the KEV catalog (Mappings Explorer), rebuilt at each run. Partial coverage: on 26 Nov 2026, 419 CVEs, 23.4 % of the KEV catalog. Rejected: invalid CVE id, CVE not in the CVE list, technique not in the loaded ATT&CK version, unknown mapping type, duplicate mapping.
+
+| Column | Type | Source field | Description |
+|---|---|---|---|
+| `vulnerability_id` | FK → `cti_vulnerability` | `capability_id` | The CVE |
+| `technique_id` | FK → `cti_technique` | `attack_object_id` | The technique |
+| `mapping_type` | varchar(30) | `mapping_type` | `exploitation_technique`, `primary_impact`, `secondary_impact` or `uncategorized` |
+| `source` | varchar(20) | — | `ctid_kev` |
+
+Unique: (`vulnerability_id`, `technique_id`, `mapping_type`).
+
 ## Watchlist (`watchlist` app)
 
 ### `watchlist_watchlistitem` — a product watched by an organization (US07, FR-07)

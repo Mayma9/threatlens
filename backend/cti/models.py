@@ -219,3 +219,92 @@ class Indicator(models.Model):
 
     def __str__(self) -> str:
         return f"{self.ioc_type} {self.value[:60]}"
+
+    
+
+class Technique(models.Model):
+    """Technique or sub-technique of MITRE ATT&CK Enterprise, e.g. T1059 or T1059.001 (attack connector)."""
+
+    technique_id = models.CharField(max_length=16, unique=True)  # "T1059", "T1059.001"
+    stix_id = models.CharField(max_length=100, unique=True)  # "attack-pattern--...", used by the relationships
+    name = models.CharField(max_length=300)
+    tactics = models.CharField(max_length=300, blank=True)  # e.g. "execution, persistence"
+    is_subtechnique = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["technique_id"]
+
+    def __str__(self) -> str:
+        return f"{self.technique_id} {self.name}"
+
+
+class Software(models.Model):
+    """Malware or tool of MITRE ATT&CK, e.g. S0154 Cobalt Strike (attack connector).
+
+    Kept apart from Malware (ThreatFox families named by Malpedia): the two catalogs use different identifiers.
+    """
+
+    class Kind(models.TextChoices):
+        MALWARE = "MALWARE", "Malware"
+        TOOL = "TOOL", "Tool"
+
+    software_id = models.CharField(max_length=16, unique=True)  # "S0154"
+    stix_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=200)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    aliases = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["software_id"]
+        verbose_name_plural = "software"
+
+    def __str__(self) -> str:
+        return f"{self.software_id} {self.name}"
+
+
+class ThreatGroup(models.Model):
+    """Threat group (intrusion set) of MITRE ATT&CK, e.g. G0007 APT28 (attack connector, US17).
+
+    techniques is the binary group x technique matrix of the clustering model M3; cluster_id is filled by M3:
+    the groups of the same cluster use similar techniques.
+    """
+
+    group_id = models.CharField(max_length=16, unique=True)  # "G0007"
+    stix_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=200)
+    aliases = models.JSONField(default=list, blank=True)
+    techniques = models.ManyToManyField(Technique, blank=True, related_name="groups")
+    software = models.ManyToManyField(Software, blank=True, related_name="groups")
+    cluster_id = models.IntegerField(null=True, blank=True)  # set by M3, empty until it runs
+
+    class Meta:
+        ordering = ["group_id"]
+
+    def __str__(self) -> str:
+        return f"{self.group_id} {self.name}"
+
+
+class VulnerabilityTechnique(models.Model):
+    """Link between a CVE and an ATT&CK technique, from the CTID mappings of the KEV catalog (ctid connector)."""
+
+    class MappingType(models.TextChoices):
+        EXPLOITATION = "exploitation_technique", "Exploitation technique"
+        PRIMARY_IMPACT = "primary_impact", "Primary impact"
+        SECONDARY_IMPACT = "secondary_impact", "Secondary impact"
+        UNCATEGORIZED = "uncategorized", "Uncategorized"
+
+    vulnerability = models.ForeignKey(Vulnerability, on_delete=models.CASCADE, related_name="technique_links")
+    technique = models.ForeignKey(Technique, on_delete=models.CASCADE, related_name="vulnerability_links")
+    mapping_type = models.CharField(max_length=30, choices=MappingType.choices)
+    source = models.CharField(max_length=20, default="ctid_kev")
+
+    class Meta:
+        verbose_name = "vulnerability technique"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["vulnerability", "technique", "mapping_type"], name="uniq_vulnerability_technique"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.vulnerability} {self.technique.technique_id} ({self.mapping_type})"
