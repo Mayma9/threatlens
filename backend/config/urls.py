@@ -8,5 +8,6 @@ urlpatterns = [
     path("watchlist/", include("watchlist.urls")),
     path("alerts/", include("alerts.urls")),
     path("plans/", include("alerts.plan_urls")),
+    path("runs/", include("pipeline.urls")),
     path("", include("accounts.urls")),
 ]

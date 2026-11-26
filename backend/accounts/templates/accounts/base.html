@@ -42,7 +42,10 @@
           {% endif %}
           {% if user.is_platform_admin %}
           <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Administration</a></li>
-          <li class="nav-item"><span class="nav-link disabled" title="Sprint 4">Pipeline monitoring</span></li>
+          {% with section=request.resolver_match.app_name %}
+          <li class="nav-item"><a class="nav-link{% if section == 'runs' %} active{% endif %}"
+              {% if section == 'runs' %}aria-current="page"{% endif %} href="{% url 'runs:list' %}">Pipeline monitoring</a></li>
+          {% endwith %}
           {% endif %}
         </ul>
         <div class="d-flex align-items-center gap-3">

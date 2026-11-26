@@ -47,11 +47,12 @@ def source_is_due(source: Source, now=None) -> bool:
 
 
 def run_pipeline(
-    *, sources=None, local_file=None, full=False, scheduled=False, triggered_by=None, stdout=None
+    *, sources=None, local_file=None, full=False, scheduled=False, triggered_by=None, stdout=None, run=None
 ) -> PipelineRun:
     ensure_sources()
     selected = [name for name in REGISTRY if not sources or name in sources]
-    run = PipelineRun.objects.create(triggered_by=triggered_by)
+    if run is None:  # the monitoring page creates the run first, then runs it in the background (US16)
+        run = PipelineRun.objects.create(triggered_by=triggered_by)
     watermark = cve_watermark()  # CVEs updated after it are the new or updated ones of this run
 
     for name in selected:

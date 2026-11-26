@@ -1,0 +1,61 @@
+{% extends "accounts/base.html" %}
+{% block title %}Run #{{ run.pk }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'runs:list' %}">Pipeline monitoring</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Run #{{ run.pk }}</li>
+  </ol>
+</nav>
+
+<h1 class="tl-page-title">Run #{{ run.pk }} {% include "pipeline/_status.html" with status=run.status label=run.get_status_display %}</h1>
+<p class="tl-muted">
+  Started {{ run.started_at|date:"d M Y H:i" }} by {% if run.triggered_by %}{{ run.triggered_by.get_username }}{% else %}the scheduler{% endif %} &middot; {{ duration_text }}
+</p>
+
+{% if run.status == "RUNNING" %}
+<div class="alert alert-info">This run is still running. Refresh the page to see each source when it ends.</div>
+{% elif run.status != "SUCCESS" and not failed_tasks and not alert_errors %}
+<div class="alert alert-warning">Every source succeeded, but a later step (severity scoring or warehouse refresh) failed. Its message is in the output of the run, in the container log.</div>
+{% endif %}
+
+{% for generation in alert_errors %}
+<section class="tl-panel p-4 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h2 class="h6 mb-0">Alert step</h2>
+    {% include "pipeline/_status.html" with status="FAILED" label="Failed" %}
+  </div>
+  <h3 class="h6 mt-3">Error message</h3>
+  <pre class="small mb-0" style="white-space: pre-wrap;">{{ generation.error_message }}</pre>
+</section>
+{% endfor %}
+
+{% for task in tasks %}
+<section class="tl-panel p-4 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h2 class="h6 mb-0">{{ task.source.label }} <span class="tl-muted small">({{ task.source.name }})</span></h2>
+    {% include "pipeline/_status.html" with status=task.status label=task.get_status_display %}
+  </div>
+  <p class="small tl-muted mt-2 mb-3">{{ task.extracted }} extracted &middot; {{ task.loaded }} loaded &middot; {{ task.rejected }} rejected{% if task.duration_text %} &middot; {{ task.duration_text }}{% endif %}</p>
+
+  {% if task.error_message %}
+  <h3 class="h6">Error message</h3>
+  <pre class="small" style="white-space: pre-wrap;">{{ task.error_message }}</pre>
+  {% endif %}
+
+  <h3 class="h6">Quality report</h3>
+  {% if task.report_rows %}
+  <dl class="row small mb-0">
+    {% for row in task.report_rows %}
+    <dt class="col-sm-4">{{ row.label }}</dt>
+    <dd class="col-sm-8">{% if row.entries %}<ul class="list-unstyled mb-0">{% for reason, count in row.entries %}<li>{{ reason }}: {{ count }}</li>{% endfor %}{% if row.more %}<li class="tl-muted">and {{ row.more }} more</li>{% endif %}</ul>{% else %}{{ row.value }}{% endif %}</dd>
+    {% endfor %}
+  </dl>
+  {% else %}
+  <p class="small tl-muted mb-0">No quality report for this source.</p>
+  {% endif %}
+</section>
+{% empty %}
+<p class="tl-muted">No source ran in this run (disabled, or not due yet).</p>
+{% endfor %}
+{% endblock %}
