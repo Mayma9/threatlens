@@ -142,7 +142,7 @@ docker compose run --rm etl                                              # every
 
 | Option | Effect |
 |---|---|
-| `--source NAME` | run one source (repeatable): `cwe`, `cve`, `nvd`, `kev`, `epss`, `threatfox` |
+| `--source NAME` | run one source (repeatable): `cwe`, `cve`, `nvd`, `kev`, `epss`, `attack`, `ctid`, `threatfox` |
 | `--file PATH` | load a local snapshot instead of downloading (one source only) |
 | `--full` | reload every record, not only those updated since the last load (`cve`, `nvd`) |
 | `--triggered-by USERNAME` | record the administrator who started the run |
@@ -153,6 +153,10 @@ docker compose run --rm etl                                              # every
 **NVD (US05).** The API key `NVD_API_KEY` of `.env` raises the limit from 5 to 50 requests per 30 seconds. Only the NVD's own data is kept (CVSS scores and CWEs of type *Primary*, status `vulnStatus`, and the CPE prefix of the products whose names match the NVD CPE exactly); since April 2026 NIST no longer scores every CVE, the quality report counts them (`without_nvd_score`). After the first load, each run reads only the CVEs modified since the previous successful run.
 
 **ThreatFox (US05, FR-14).** The Auth-Key `ABUSECH_AUTH_KEY` of `.env` is required. Each run reads the IOCs first seen in the last 7 days (the maximum of the API) and updates those already loaded, so the history grows from the first run on: run the pipeline at least once a week. IOCs are metadata only, never visited or opened (risk R9); they are analyzed in Power BI (`fact_ioc`), not in the console.
+
+
+**ATT&CK and CTID (#61, US17).** `attack` loads MITRE ATT&CK Enterprise from the official STIX bundle (latest release): techniques and sub-techniques, APT groups with their aliases, software (malware and tools), and the *uses* links of each group. These links are the group × technique matrix of the clustering model M3, which fills `cti_threatgroup.cluster_id`. Revoked and deprecated objects are skipped, and the links are rebuilt at each run. `ctid` loads the mappings of the Center for Threat-Informed Defense between the exploited CVEs (CISA KEV) and ATT&CK techniques (KEV version 07/28/2025, made for ATT&CK 16.1): a technique renamed or removed since then is rejected. **The coverage is partial:** on 26 Nov 2026, 1,177 of 1,183 mappings were loaded, and 419 CVEs have at least one technique, 23.4 % of the KEV catalog (`kev_coverage_percent` in the quality report). A newer KEV mapping file needs a new `CTID_URL` in `pipeline/connectors/ctid.py`. Both catalogs change rarely: set the two sources to `weekly` in *Sources*.
+
 
 Each run is logged in the admin (*Pipeline runs*, *Ingestion tasks*): status, extracted / loaded / rejected counts, quality report and error message.
 

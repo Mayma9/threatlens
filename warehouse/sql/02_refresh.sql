@@ -4,13 +4,13 @@
 -- (psql -1, or the refresh_warehouse command): if anything fails, nothing changes.
 -- Running it twice gives the same rows (idempotent).
 --
--- Not filled yet (no source in the operational schema): dim_technique and bridge_cve_technique
--- stay empty until the ATT&CK and CTID connectors exist.
+-- dim_technique and bridge_cve_technique come from the attack and ctid connectors (#61): the techniques of
+-- MITRE ATT&CK Enterprise and the CTID mappings of the KEV CVEs (partial coverage).
 
 TRUNCATE
     dw.fact_vulnerability, dw.fact_alert, dw.fact_ioc, dw.bridge_cve_technique,
     dw.dim_date, dw.dim_source, dw.dim_vulnerability, dw.dim_product,
-    dw.dim_weakness, dw.dim_severity, dw.dim_alert_status,
+    dw.dim_weakness, dw.dim_severity, dw.dim_alert_status, dw.dim_technique,
     dw.dim_indicator, dw.dim_malware, dw.dim_threat_type;
 
 -- ============================================================ dimensions
@@ -56,6 +56,8 @@ SELECT
         WHEN 'threatfox' THEN 'threat indicators'
         WHEN 'kev'  THEN 'exploitation catalog'
         WHEN 'epss' THEN 'scoring'
+        WHEN 'attack' THEN 'adversary techniques'
+        WHEN 'ctid' THEN 'vulnerability to technique mapping'
         ELSE 'other'
     END,
     COALESCE(url, '')
@@ -109,6 +111,18 @@ LEFT JOIN (
     FROM public.watchlist_watchlistitem
     GROUP BY product_id
 ) w ON w.product_id = p.id;
+
+-- ============================================================ ATT&CK (attack and ctid connectors)
+
+INSERT INTO dw.dim_technique (technique_key, technique_id, name, tactic)
+SELECT id, technique_id, name, left(tactics, 100)
+FROM public.cti_technique;
+
+-- One row per CVE x technique: a CVE mapped to the same technique with two mapping types counts once.
+INSERT INTO dw.bridge_cve_technique (vuln_key, technique_key, mapping_source)
+SELECT vulnerability_id, technique_id, min(source)
+FROM public.cti_vulnerabilitytechnique
+GROUP BY vulnerability_id, technique_id;
 
 -- ============================================================ fact tables
 
