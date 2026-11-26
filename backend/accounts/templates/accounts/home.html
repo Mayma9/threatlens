@@ -32,7 +32,10 @@
     <section class="tl-panel tl-panel--admin h-100 p-4">
       <h2 class="h6"><i class="bi bi-gear"></i> Administration</h2>
       <p class="small tl-muted">Users and roles, data sources, model versions and pipeline monitoring.</p>
-      <a class="btn btn-sm btn-outline-primary" href="{% url 'admin:index' %}">Open administration</a>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'admin:index' %}">Open administration</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'runs:list' %}">Pipeline monitoring</a>
+      </div>
     </section>
   </div>
   {% endif %}

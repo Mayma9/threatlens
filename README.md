@@ -194,7 +194,25 @@ docker compose exec -T db psql -U threatlens -d threatlens < warehouse/sql/olap/
 
 Raw snapshots are kept in `data/staging/<source>/` (last 3 per source, git-ignored). Tables and quality rules: [data dictionary](docs/data_dictionary.md) and [warehouse dictionary](docs/data_warehouse_dictionary.md).
 
-### Daily run (Windows Task Scheduler)
+### Pipeline monitoring page (US16)
+
+Log in as `admin1` and open **Pipeline monitoring** in the menu (http://localhost:8000/runs/).
+
+| Page | URL | What it shows |
+|---|---|---|
+| Runs | `/runs/` | Every run, newest first: status, duration, who started it (*Scheduler* when empty) and, per source, the rows extracted, loaded and rejected |
+| Run detail | `/runs/<id>/` | Per source: the error message of a failed source and its quality report (rejection reasons with their counts, up to 10 rejected examples; ThreatFox examples are never shown, R9) |
+| Start a run | button on `/runs/` | Creates a run with the administrator as trigger, then runs every active source in the background. Refused while another run is *Running* |
+
+Only the administrator reaches these pages: an analyst or a CISO gets HTTP 403.
+
+A run started from the page runs inside the `web` container. If that container restarts during the run (for example `runserver` reloading after a code change), the run stays *Running*; after 12 hours it no longer blocks the button. To close it at once, set its number and run:
+
+```powershell
+$run = 19
+docker compose exec web python manage.py shell -c "from django.utils import timezone; from pipeline.models import IngestionTask, PipelineRun, RunStatus; now = timezone.now(); IngestionTask.objects.filter(run_id=$run, status=RunStatus.RUNNING).update(status=RunStatus.FAILED, ended_at=now, error_message='Interrupted: the web server restarted during the run.'); PipelineRun.objects.filter(pk=$run, status=RunStatus.RUNNING).update(status=RunStatus.FAILED, ended_at=now)"
+
+```### Daily run (Windows Task Scheduler)
 
 1. Open *Task Scheduler* → *Create Basic Task* → name `ThreatLens pipeline`.
 2. Trigger: *Daily*, e.g. 07:00.

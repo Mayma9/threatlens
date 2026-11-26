@@ -1,0 +1,67 @@
+{% extends "accounts/base.html" %}
+{% block title %}Pipeline monitoring{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+  <div>
+    <h1 class="tl-page-title">Pipeline monitoring</h1>
+    <p class="tl-muted mb-0">Every run of the ETL pipeline, newest first: its status, its duration and what each source extracted, loaded and rejected.</p>
+  </div>
+  <form method="post" action="{% url 'runs:start' %}" class="m-0">
+    {% csrf_token %}
+    {% if running %}
+    <button type="submit" class="btn btn-primary" disabled>Run #{{ running.pk }} is still running</button>
+    {% else %}
+    <button type="submit" class="btn btn-primary"><i class="bi bi-play-fill"></i> Start a run</button>
+    {% endif %}
+  </form>
+</div>
+
+<section class="tl-panel overflow-hidden mt-4">
+  {% if runs %}
+  <div class="table-responsive">
+    <table class="table tl-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Run</th>
+          <th scope="col">Started</th>
+          <th scope="col">Duration</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="d-none d-md-table-cell">Started by</th>
+          <th scope="col">Sources</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td class="text-nowrap"><a class="tl-cve__id" href="{% url 'runs:detail' run.pk %}">#{{ run.pk }}</a></td>
+          <td class="text-nowrap small">{{ run.started_at|date:"d M Y H:i" }}</td>
+          <td class="text-nowrap small">{{ run.duration_text }}</td>
+          <td>{% include "pipeline/_status.html" with status=run.status label=run.get_status_display %}</td>
+          <td class="d-none d-md-table-cell small">{% if run.triggered_by %}{{ run.triggered_by.get_username }}{% else %}<span class="tl-muted">Scheduler</span>{% endif %}</td>
+          <td class="small">
+            {% for task in run.tasks.all %}
+            <div class="text-nowrap">{% include "pipeline/_status.html" with status=task.status label=task.get_status_display %} <strong>{{ task.source.name }}</strong> {{ task.extracted }} extracted &middot; {{ task.loaded }} loaded &middot; {{ task.rejected }} rejected</div>
+            {% empty %}
+            <span class="tl-muted">No source ran (disabled, or not due yet)</span>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="p-4 mb-0 tl-muted">No run yet. Start the first one with the button above.</p>
+  {% endif %}
+</section>
+
+{% if is_paginated %}
+<nav class="mt-3" aria-label="Pages of runs">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Newer</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Older</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
