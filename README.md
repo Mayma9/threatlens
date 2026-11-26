@@ -212,7 +212,9 @@ A run started from the page runs inside the `web` container. If that container r
 $run = 19
 docker compose exec web python manage.py shell -c "from django.utils import timezone; from pipeline.models import IngestionTask, PipelineRun, RunStatus; now = timezone.now(); IngestionTask.objects.filter(run_id=$run, status=RunStatus.RUNNING).update(status=RunStatus.FAILED, ended_at=now, error_message='Interrupted: the web server restarted during the run.'); PipelineRun.objects.filter(pk=$run, status=RunStatus.RUNNING).update(status=RunStatus.FAILED, ended_at=now)"
 
-```### Daily run (Windows Task Scheduler)
+```
+
+### Daily run (Windows Task Scheduler)
 
 1. Open *Task Scheduler* → *Create Basic Task* → name `ThreatLens pipeline`.
 2. Trigger: *Daily*, e.g. 07:00.
